@@ -31,15 +31,27 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, eval = FALS
 
 ## 2. Import and manipulate spatial data
 
-Working in the same R Project you created in the Intro lesson, create a new R Markdown document for this lesson. You will also need a couple new R data packages to import some of the spatial data sets for this lesson.
+There are a few new R packages we will need to work with spatial data, listed below with hyperlinks and decribed in more detail throughout this and other lessons.
 
-We will be using the `tigris` package to import some vector data, and `elevatr` to import a raster data set of elevation. Make sure those packages are included in your 'setup.R' script, and run it at the top of your new R Markdown document.
+-   `sf` : working with vector data
+
+-   `terra` : working with raster data
+
+-   `tmap` : visualizing spatial data (i.e., making maps!)
+
+-   `tigris` : import vector data from the U.S. Census database (i.e., political boundaries, roads, etc.)
+
+-   `elevatr` : import elevation data
+
+-   `rgbif` (optional) : import species occurrence data from the GBIF database
+
+-   `soilDB` (optional) : import snow depth data from SNOTEL sites across the U.S.
+
+We've already added these packages to a 'setup.R' script in this project directory, so you can use `source("setup.R")` at the beginning of each lesson if you want, otherwise you will need to install each new one manually with `install.packages()`.
 
 ```{r}
 source("setup.R")
 ```
-
-First, create a new directory in your project called 'data/' where you will be saving all the data used for this week's lesson.
 
 ### 2.1 Vector Data
 
@@ -50,15 +62,13 @@ First, create a new directory in your project called 'data/' where you will be s
 All the data we are working with in this lesson is confined to the state of Colorado. Let's start by pulling in political boundaries for Colorado counties with the `tigris` package, which returns a shapefile consisting of polygons for each county.
 
 ```{r}
-#| message: false
-#| warning: false
-#| results: hide
-
 # download county shapefile for the state of Colorado
 counties <- counties(state = "CO")
 ```
 
-The `tigris` package is one of many data retrieval R packages that uses API calls to pull in data from various online/open databases directly into your R session, without the need to separately download. When you close out your R session, these 'temp' files are erased, so it does not use up any of your local storage. At the end of this lesson you will learn how to save shapefiles to your computer if you do in fact want to store and use them in the future (e.g., you manipulated a data set quite a bit and don't want to re-run the entire process every new R session).
+The `tigris` package is one of many data retrieval R packages that uses API calls to pull in data from various online/open databases directly into your R session, without the need to separately download. When you close out your R session, these 'temp' files are erased, so it does not use up any of your local storage.
+
+At the end of this lesson you will learn how to save shapefiles to your computer if you do in fact want to store and use them in the future (e.g., you manipulated a data set quite a bit and don't want to re-run the entire process every new R session).
 
 ### **Lines**
 
@@ -70,7 +80,7 @@ roads <- roads(state = "CO", county = "Larimer")
 
 ### [`tmap`](https://r-tmap.github.io/tmap/)
 
-Throughout this lesson we will be using the `tmap` package to produce quick static or interactive maps. It should be included in your setup script, but if not be sure to add it now.
+Throughout this lesson we will be using the `tmap` package to produce quick static or interactive maps.
 
 `tmap` allows for both static ("plot" mode) and interactive ("view" mode) mapping options, which you can set using the function `tmap_mode()` . For today we will be making quick interactive plots. Once you set the mode with `tmap_mode()`, every plot call to `tmap` after that produces a plot in that mode.
 
@@ -80,33 +90,37 @@ tmap_mode("view")
 
 Lets view our Colorado counties and Larimer County roads shapefiles. To make a "quick thematic map" in `tmap` you can use the `qtm()` function. You can also use `tm_shape()` plus the type of spatial layer (e.g., `tm_polygons()`) to add your layers to the map if you want to customize the map a little more.
 
+*Note:* map rendering may take a few seconds because the roads layer is pretty large and detailed.
+
 ```{r}
-#Using qtm
+# Option 1: Using qtm()
 qtm(counties)+
   qtm(roads)
+```
 
-#Using tm_shape
+```{r}
+# Option 2: Using tm_shape()
 tm_shape(counties)+
   tm_polygons()+
 tm_shape(roads)+
   tm_lines()
 ```
 
-Rendering the map may take a little while due to relatively large size of the `roads` object.
-
 Mess around with this map a little bit. See that you can change the basemap, turn layers on and off, and click on features to see their attributes.
 
-Let's inspect the spatial data sets a little more. What do you see when you run `class(counties)` ?
+Let's inspect the spatial data sets a little more. What do you see when you run the following line of code?
+
+```{r}
+class(counties)
+```
 
 ### [`sf`](https://r-spatial.github.io/sf/)
 
-By default, the `tigris` package imports spatial data in `sf` format, which stands for 'simple features'. The `sf` package provides an easy and efficient way to work with vector data, and represents spatial features as a `data.frame` or `tibble` with a geometry column, and therefore also works well with `tidyverse` packages to perform manipulations like you would a data frame.
+By default, the `tigris` package imports spatial data in `sf` format, which stands for 'simple features'. The `sf` package provides an easy and efficient way to work with vector data, and represents spatial features as a `data.frame` or `tibble` with a **geometry** column, and therefore also works well with `tidyverse` packages to perform manipulations like you would a data frame.
 
-For example, we are going to do an exercise for the Poudre Canyon Highway, so we want to filter out the roads data set to only those features. Using your investigative geography skills, find the highway on your map, find out what the exact 'FULLNAME' attribute is, and use that to `filter()` the data set.
+## Exercise #1
 
-<details>
-
-<summary>Show Answer</summary>
+For example, we are going to do an exercise for the Poudre Canyon Highway, so we want to filter out the roads data set to only those features. Using your investigative geography skills and your interactive map, find the highway on your map and find out what the exact 'FULLNAME' attribute is, and use that to `filter()` the data set. Call the new roads feature `poudre_hwy`.
 
 ```{r}
 poudre_hwy <- roads %>% 
@@ -114,8 +128,6 @@ poudre_hwy <- roads %>%
 
 qtm(poudre_hwy)
 ```
-
-</details>
 
 ### Points
 
@@ -129,7 +141,9 @@ poudre_points <- data.frame(name = c("Mishawaka", "Rustic", "Blue Lake Trailhead
                             lat = c(40.68752, 40.69687, 40.57960))
 ```
 
-Now convert it to an `sf` object, specifying the longitude and latitude columns and the CRS (Coordinate Reference System). Note that 'x' (longitude) always goes first followed by 'y' (latitude).
+Right now, `poudre_points` is just a data frame (run `class(poudre_points)` to check). We need to convert it to a spatial (`sf`) object first in order to map and spatially analyze it.
+
+Within the `st_as_sf()` function we need to specifying the longitude and latitude columns in our `poudre_points` data frame and the CRS (Coordinate Reference System). **Note** **that 'x' (longitude) always goes first followed by 'y' (latitude).** Otherwise it will map your points on the other side of the world.
 
 ```{r}
 poudre_points_sf <- st_as_sf(poudre_points, coords = c("long", "lat"), crs = 4326)
@@ -140,9 +154,9 @@ qtm(poudre_hwy)+
 
 ### Coordinate Reference Systems
 
-Probably the most important part of working with spatial data is the coordinate reference system (CRS) that is used. In order to analyze spatial data, all objects should be in the exact same CRS.
+Probably the most important part of working with spatial data is the coordinate reference system (CRS) that is used. The CRS describes how and where your spatial data is located on Earth. There are numerous different CRS's depending on when and how the data was collected, the spatial location and extent it was collected, etc. In order to analyze and visualize spatial data, **all objects must be in the exact same CRS**.
 
-We can check a spatial object's CRS by printing it to the console, which will return a bunch of metadata about the object. You can specifically return the CRS for `sf` objects with `st_crs()`.
+We can check a spatial object's CRS by printing it the object name to the console, which will return a bunch of metadata about the object. You can specifically return the CRS for `sf` objects with `st_crs()`.
 
 ```{r}
 # see the CRS in the header metadata:
@@ -155,23 +169,26 @@ st_crs(counties)
 You can check if two objects have the same CRS like this:
 
 ```{r}
-st_crs(counties) == st_crs(poudre_points_sf)
+st_crs(poudre_hwy) == st_crs(poudre_points_sf)
 ```
 
 Uh oh, the CRS of our points and lines doesn't match. While `tmap` performs some on-the-fly transformations to map the two layers together, in order to do any analyses with these objects you'll need to re-project one of them. You can project one object's CRS to that of another with `st_transform` like this:
 
 ```{r}
-poudre_points_prj <- st_transform(poudre_points_sf, st_crs(counties))
+# transform the CRS of poudre_points_sf to the CRS of poudre_hwy
+poudre_points_prj <- st_transform(poudre_points_sf, st_crs(poudre_hwy))
 
-#Now check that they match
-st_crs(poudre_points_prj) == st_crs(counties)
+# Now check that they match
+st_crs(poudre_points_prj) == st_crs(poudre_hwy)
 ```
 
 ### 2.2 Raster Data
 
 ### [`elevatr`](https://github.com/jhollist/elevatr/)
 
-Lets import some elevation data using the `elevatr` package. The function `get_elev_raster()` returns a raster digital elevation model (DEM) from the AWS Open Data Terrain Tiles. For this function you must supply a spatial object specifying the extent of the returned elevation raster and the resolution (specified by the zoom level `z`). We are importing elevation at \~ 1km resolution (more like 900 m), and we can use our `counties` object as the extent we want to download to, which will return elevation tiles for the state of Colorado.
+Lets import some elevation data using the `elevatr` package. The function `get_elev_raster()` returns a raster digital elevation model (DEM) from the AWS Open Data Terrain Tiles. For this function you must supply a spatial object specifying the **extent** of the returned elevation raster and the resolution (specified by the zoom level `z`). We are importing elevation at \~ 1km resolution (more like 900 m), and we can use our `counties` object as the extent we want to download to, which will return elevation tiles for the state of Colorado.
+
+*Note*: 'extent' is the spatial bounding box of the data (represented by the x,y coordinates of the four corners inclusive of the entire spatial data)
 
 ```{r}
 elevation <- get_elev_raster(counties, z = 7)
@@ -198,7 +215,9 @@ elevation
 
 ### `terra`
 
-We can use the `terra` package to work with raster data. For example, we only want to see elevation along the Poudre highway. We can use `crop` to crop the raster to the extent of our `roads` shapefile (to get all of Larimer County), using the `ext()` function to get the extent of that spatial object.
+We can use the `terra` package to work with raster data. For example, we only want to see elevation along the Poudre highway. We can use `crop` to crop the raster to the extent of our `poudre_hwy` shapefile using the `ext()` function to get the extent (i.e., bounding box) of our `poudre_hwy` object.
+
+However...the following line of code doesn't work:
 
 ```{r}
 # If we try this, we get an error
@@ -206,33 +225,37 @@ elevation_crop <- crop(elevation, ext(poudre_hwy))
 
 ```
 
-This doesn't work because our `elevation` object is actually not in the proper format to work with the `terra` package. The `elevatr` package still uses the `raster` package to work with raster data, however this package is outdated and we want to stick with `terra` for this course and any future work you do with raster data (note that the `elevatr` package maintainer says these dependencies will be updated in 2023).
+This doesn't work because our `elevation` object is actually not in the proper format to work with the `terra` package. The `elevatr` package still uses the `raster` package to work with raster data, however this package is outdated and we want to stick with `terra` for this course and any future work you do with raster data.
 
-Converting a RasterLayer object to a `terra` SpatRaster object is quick using the `rast()` function. Lets also give this layer a more informative name in the process.
+```{r}
+# note the data type of elevation is RasterLayer
+class(elevation)
+```
+
+`terra` using objects of a new class called `SpatRaster`. Converting a `RasterLayer` to a `SpatRaster` is quick using the `rast()` function.
 
 ```{r}
 elevation <- rast(elevation)
-names(elevation) <- "Elevation"
 ```
 
-Now we can use `terra` functions
+Now check the class:
 
 ```{r}
-elevation_crop <- crop(elevation, ext(roads))
-
-tm_shape(elevation_crop)+
-  tm_raster(style = "cont")
+class(elevation)
 ```
 
-Lets make a final map with all the spatial data we created
+Now we can use `terra` functions, and re-run the `crop()` code we tried earlier:
 
 ```{r}
-tm_shape(elevation, bbox = st_bbox(poudre_hwy))+
-  tm_raster(style = "cont", title = "Elevation (m)")+
-tm_shape(poudre_hwy)+
-  tm_lines()+
-tm_shape(poudre_points_prj)+
-  tm_dots(size = 0.2)
+elevation_crop <- crop(elevation, ext(poudre_hwy))
+```
+
+Plot all our spatial layers together:
+
+```{r}
+qtm(elevation_crop) +
+  qtm(poudre_hwy) +
+  qtm(poudre_points_prj)
 ```
 
 ## 3. Reading and Writing Spatial Data
