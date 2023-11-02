@@ -9,11 +9,11 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 ```
 
-In the first lesson this week you were exposed to various databases you can pull spatial data from and worked through importing, wrangling, and saving those spatial data types. Today we are going to use those data sets to perform a range of spatial analyses.
+In the first lesson this week you were introduced to different spatial data types, various databases you can pull spatial data from and worked through importing, wrangling, and saving those spatial data types. Today we are going to dive deeper in spatial analyses in R.
 
-You have briefly used the `sf` and `terra` packages so far in this course, but today we will be exploring them much more in depth using the wide range of spatial analysis operations they provide.
+You have briefly used the `sf` and `terra` packages so far, but today we will be exploring them much more in depth using the wide range of spatial analysis operations they provide.
 
-You shouldn't need to install any new packages for today:
+You shouldn't need to install any new packages for today, but need to load in all the necessary libraries:
 
 ```{r}
 source("setup.R")
@@ -21,7 +21,17 @@ source("setup.R")
 
 ## Load in spatial data
 
-To carry out today's lesson you will need to read in the data you saved to your 'data/' folder from the 'get-spatial' lesson:
+We will be working with some new datasets today that are already included in the 'data/' folder. These include:
+
+-   "spatDat.RData" : an .RData file that loads in the four objects:
+
+    -   `counties` : a multipolygon layer of Colorado counties (which we used in 01_spatial_intro.Rmd)
+
+    -   `rivers` : a polyline layer of all major rivers in Colorado
+
+    -   `occ` : a list of three dataframes that includes species occurrence data (i.e., point locations) for Elk, Yellow-bellied Marmot, and Western Tiger Salamander in Colorado retrieved from the [GBIF](https://www.gbif.org/) database.
+
+    -   `snotel_data` : spatial point dataframe (i.e., `sf` object) of daily snow depth for 8 SNOTEL sites in Colorado
 
 ```{r key1}
 #load in all your vector data
@@ -33,9 +43,13 @@ landcover <- terra::rast("data/NLCD_CO.tif")
 elevation <- terra::rast("data/elevation.tif")
 ```
 
+### Bonus Lesson
+
+All the above objects were retrieved and cleaned in R. The lesson plan in the 'bonus/' folder titled **'get_spatial_challenge.Rmd'** is an assignment that tasks you with importing and cleaning the data that was saved in 'spatDat.RData'. If you complete this challenge assignment fully you will get *up to 3 extra credit points*. Even if you don't want to complete this challenge, it is worth your while to read and work through it!
+
 ## Distance Calculations
 
-We're going to start off today with some distance calculations. Using our species occurrence data, say we want to compare each species average distance to the nearest river.
+We're going to start off today with some distance calculations. Using our species occurrence data, say we want to know on average how far away is each species found from a major river, and compare that among species.
 
 Throughout today we are going to be mapping our spatial data to quickly inspect it and get a visual of the data's extent and characteristics, so lets set our `tmap` mode to interactive.
 
@@ -43,37 +57,73 @@ Throughout today we are going to be mapping our spatial data to quickly inspect 
 tmap_mode("view")
 ```
 
+First, our `occ` object is not in a spatial format. We first need to bind our dataframes into a single one, and convert it to an `sf` object using `st_as_sf()` :
+
+```{r}
+occ_sp <- bind_rows(occ) %>% 
+  st_as_sf(coords = c("decimalLongitude", "decimalLatitude"), crs = 4236)
+```
+
+We set the CRS to `4236`, which is the EPSG code for WGS84, the most commonly used CRS for GPS coordinates (But I also checked the GBIF metadata to make sure it was in fact WGS84).
+
 Quick view of all our points, colored by species:
 
 ```{r}
-qtm(occ, symbols.col = "Species")
+qtm(occ_sp, symbols.col = "Species")
 ```
 
 Now, calculating the distance to the nearest river involves point to line distance calculations, which we can perform with the `sf` package.
 
 Before performing any spatial operations, remember all of our spatial objects must be in the same CRS.
 
-Using what you learned in week one, check the CRS of the occurrences and rivers, and perform a spatial transformation if needed (***for the sake of this lesson, keep data in NAD83***).
-
-```{r}
-st_crs(rivers)
-st_crs(occ)
-
-#complete this operation
-occ <- st_transform()
-```
-
 ### Exercise #1
 
-Our occurrence data set covers all of Colorado, but rivers are only for Larimer County. So, we have to first filter our points to Larimer County. Explore the use of `st_filter()` and use it to filter points that are found within the Larimer County polygon (which you can filter/index from your `counties` object). Call the new object`'occ_larimer` and include a quick plot of the filtered points.
+```{r}
+st_crs(rivers) == st_crs(occ_sp)
+```
 
-<hr>
+The CRS of our objects does not match. Using what you learned in week one, conduct a spatial transformation to our `occ_sp` object to coerce it to the same CRS of our `rivers` object. Call the new object `occ_prj` and double check that `rivers` and our new occurrences object are in the same CRS after transforming
+
+```{r}
+occ_prj <- st_transform(occ_sp, st_crs(rivers))
+
+st_crs(occ_prj) == st_crs(rivers)
+```
+
+Now lets visualize our rivers and occurrence data:
+
+```{r}
+qtm(rivers) +
+  qtm(occ_prj, symbols.col = "Species")
+```
+
+Our occurrence data set covers all of Colorado, but rivers are only for Larimer County. So, we have to first filter our points to Larimer County.
+
+Similar to `filter()` from the {tidyverse}, we can use `st_filter()` to perform a *spatial* filtering (i.e., we want to filer just the points that occur in Larimer County).
+
+### Exercise #2
+
+Use `?st_filter` to explore the use of the function, and then use it to filter our `occ_prj` points to Larimer county and call the new object `occ_larimer`.
+
+*Note:* You will first need to create a spatial object of just Larimer county to use as a filter.
+
+```{r}
+larimer <- counties %>% filter(NAME == "Larimer")
+
+occ_larimer <- st_filter(occ_prj, larimer)
+
+qtm(occ_larimer)
+```
+
+```{r}
+qtm(occ_larimer)
+```
 
 Great, now we just have species occurrences within Larimer County.
 
 Now for each point we want to calculate its distance to the nearest river. The most efficient way is to first find the nearest line feature for each point. We can do this with the `st_nearest_feature()` function.
 
-This function returns the index values (row number) of the river feature in the `rivers` spatial data frame that is closest in distance to each point. Here we are saving these index values in a new column of our Larimer occurrences that we will use later to calculate distances.
+This function returns the index values (row number) of the river feature in the `rivers` spatial data frame that is closest in distance to each point. Here we are assigning these index values to a new column of our Larimer occurrences called 'nearest_river' that we will use later to calculate distances:
 
 ```{r}
 occ_larimer$nearest_river <- st_nearest_feature(occ_larimer, rivers)
@@ -86,63 +136,80 @@ occ_larimer$river_dist_m <-
   st_distance(occ_larimer, rivers[occ_larimer$nearest_river, ], by_element = TRUE)
 ```
 
-Notice that the new column is more than just a numeric class, but a "units" class, specifying that the values are in meters.
+Notice that the new column "river_dist_m" is more than just a numeric class, but a "units" class, specifying that the values are in meters.
 
 ```{r}
 str(occ_larimer)
 ```
 
-### Exercise #2
+### Exercise #3
 
-Cool, now you have the distance to the nearest river (in meters) for each individual species occurrence, but you want the average distance for each species. Using what you know of the `dplyr` functions, calculate the species average distance, then re-create the bar plot below with `ggplot2` to compare the averages (feel free to add more customization!):
+Cool, now you have the distance to the nearest river (in meters) for each individual species occurrence, but you want the average distance for each species. Using what you know of the `dplyr` functions, calculate the species average distance, then make a bar plot to compare the averages among species:
 
-![](images/ex2_barplot.png)
+*Hint*: remember that the new distance column is a 'units' data type will throw an error when you try to plot those values. You will need to make use of `mutate()` and `as.numeric` within your string of operations in order to complete task.
 
-*Hint*: remember that the new distance column is a 'units' data type and may throw an error. You will need to coerce that data type in order to complete the operation.
+```{r}
+occ_larimer %>% 
+  mutate(river_dist_m = as.numeric(river_dist_m)) %>% 
+  group_by(Species) %>% 
+  summarize(mean_distance = mean(river_dist_m)) %>% 
+  ggplot(aes(x = Species, y = mean_distance)) +
+  geom_col()
 
-<hr>
+
+```
+
+Which species is, on average, found closest to a river?
 
 ## Buffers
 
-Alternatively, say you want to know what percentage of species' occurrences (points) were found within a specified distance of a river (calculated buffer).
+Alternatively, say you want to know what percentage of species' occurrences (points) were found within a specified distance of a river (calculated buffer). Here lets investigate how often each species is found within 100m of a river.
 
-To do this we could add a buffer around our line features and filter the points that fall within that buffer zone. For this example let's say we are interested in the 100 m buffer zone around a river. However, if you try this you'll notice this operation takes quite a while.
+To do this we can add a buffer around our line features and filter the points that fall within that buffer zone. We can use `st_buffer()` with a specified distance (default is meters since our `rivers` object uses 'meters' as its length unit, we can tell by checking the CRS with `st_crs()`)
 
 ```{r eval=FALSE}
 river_buffer <- st_buffer(rivers, dist = 100)
+
+qtm(river_buffer)
 ```
 
-Instead, a more efficient way would be to make a 100 m buffer around each point, and see how many of those buffers intersect with a river.
+If you zoom in on the map you can now see a buffer around the rivers, and this new object is actually a polygon geometry type now instead of a line.
 
 ```{r}
-occ_buffer <- st_buffer(occ_larimer, dist = 100)
-
+river_buffer
 ```
-
-Still takes a little bit of run time, but much faster than buffering each line feature. Our `occ_buffer` object is now a spatial polygon data frame, where each feature is an occurrence buffer with 100 m radius.
 
 ## Spatial Intersect
 
-We can conduct spatial intersect operations using the function `st_intersects()`. This function checks if each individual buffer intersects with a river, and if so it returns an index value (row number) for each river feature it intersects. This function returns a list object for each buffer polygon, that will be empty if there are no intersections. We will add this as a column to our buffer data set, and then create a binary yes/no river intersection column based on those results (is the list empty or not?).
+We can conduct spatial intersect operations using the function `st_intersects()`. This function checks if each occurence intersects with the river buffer, and if so it returns an index value (row number) for the river feature it intersects. This function returns a list object for each occurrence, that will be empty if there are no intersections. We will add this as a column to our occurrence data set, and then create a binary yes/no river intersection column based on those results (is the list empty or not?).
+
+First look at what `st_intersects()` returns:
 
 ```{r}
-river_intersections <- st_intersects(occ_buffer, rivers)
+st_intersects(occ_larimer, river_buffer)
 ```
 
-If we inspect this object, we see it is a list of the same length as our `occ_buffer` object, where each list element is either empty (no intersections) or a list of index numbers for the river features that do intersect that buffer.
-
-### Exercise #3
-
-Create a new column in `occ_buff` that returns TRUE/FALSE if the buffer intersects with a river.
-
-*Hint*: make use of the `length()` function..we aren't interested at this point in how many river features are within 100m of a species occurrence, just whether or not there was a river within the buffer or not.
-
-Second, calculate what percentage of occurrences are within 100 m of a river for each species using `dplyr` operations. The below code will get you started, however it doesn't quite work. Why not? There is one line of code you need to add to the pipe operations for this to work, what is it?
+We see it is a list of the same length as our `occ_larimer` object, where each list element is either empty (no intersections) or the index number for the river buffer feature it intersects with. To add this as a new column in our `occ_larimer` data we run this:
 
 ```{r}
-occ_buffer %>% 
+occ_larimer$river_intersections <- st_intersects(occ_larimer, river_buffer) 
+```
+
+Now we can create a new column in `occ_larimer` called 'river_100m' that returns TRUE/FALSE if the buffer intersects with a river. We make use of `if_else()` and the `lengths()` function to check the length of each list element in each row, as the empty ones will return a length of 0. If the length is zero/empty, then we return FALSE meaning that occurrence was not found within 100m of a river.
+
+```{r}
+occ_rivers <- occ_larimer %>% 
+  mutate(river_100m = if_else(lengths(river_intersections) == 0, FALSE, TRUE))
+```
+
+Now we can calculate what percentage of occurrences are within 100 m of a river for each species using `dplyr` operations. Which species is most often found within 100m of a river?
+
+```{r}
+occ_rivers %>% 
   group_by(Species) %>% 
-  summarise(total_occ = n(), percent_river = (sum(river_100m == TRUE)/total_occ)*100)
+  summarise(total_occ = n(), 
+            total_rvier = sum(river_100m == TRUE),
+            percent_river = (sum(river_100m == TRUE)/total_occ)*100) 
 ```
 
 <hr>
