@@ -88,9 +88,11 @@ Throughout this lesson we will be using the `tmap` package to produce quick stat
 tmap_mode("view")
 ```
 
-Lets view our Colorado counties and Larimer County roads shapefiles. To make a "quick thematic map" in `tmap` you can use the `qtm()` function. You can also use `tm_shape()` plus the type of spatial layer (e.g., `tm_polygons()`) to add your layers to the map if you want to customize the map a little more.
+Lets view our Colorado counties and Larimer County roads shapefiles. To make a "quick thematic map" in `tmap` you can use the `qtm()` function. You can also use `tm_shape()` plus the type of spatial layer (e.g., `tm_polygons()`) to add your layers to the map. Both methods below will produce the same exact map, and you may think why would you ever need to use the `tm_shape()` method since its more code? The answer may be rarely, but there are some cases where you can customize your maps better with `tm_shape()` that we will see later on.
 
-*Note:* map rendering may take a few seconds because the roads layer is pretty large and detailed.
+Also notice that `tmap` uses `+` signs to tack on additional maps/elements similar to `ggplot2` code (i.e., no pipe!)
+
+*Note: map rendering may take a few seconds because the roads layer is pretty large and detailed.*
 
 ```{r}
 # Option 1: Using qtm()
@@ -108,7 +110,7 @@ tm_shape(co_roads)+
 
 Mess around with this map a little bit. See that you can change the basemap, turn layers on and off, and click on features to see their attributes.
 
-There are a ton of ways to customize these maps (more details on this in the spatial viz lesson!). For example, `counties` has an 'ALAND' variable, which represents the total land area of each county. To color by that variable we would use:
+There are a ton of ways to customize these maps (more details on this in the spatial viz lesson!). For example, `co_counties` has an 'ALAND' variable, which represents the total land area of each county. To color by that variable we would use:
 
 ```{r}
 qtm(co_counties, fill = "ALAND")
@@ -190,9 +192,9 @@ st_crs(poudre_points_prj) == st_crs(poudre_hwy)
 
 ### [`elevatr`](https://github.com/jhollist/elevatr/)
 
-Lets import some elevation data using the `elevatr` package. The function `get_elev_raster()` returns a raster digital elevation model (DEM) from the AWS Open Data Terrain Tiles. For this function you must supply a spatial object specifying the **extent** of the returned elevation raster and the resolution (specified by the zoom level `z`). We are importing elevation at \~ 1km resolution (more like 900 m), and we can use our `counties` object as the extent we want to download to, which will return elevation tiles for the state of Colorado.
+Lets import some elevation data using the `elevatr` package. The function `get_elev_raster()` returns a raster digital elevation model (DEM) from the AWS Open Data Terrain Tiles. For this function you must supply a spatial object specifying the **extent** of the returned elevation raster and the resolution (specified by the zoom level `z`). We are importing elevation at \~ 1km resolution (more like 900 m), and we can use our `co_counties` object as the extent we want to download to, which will return elevation tiles for the state of Colorado.
 
-*Note*: 'extent' is the spatial bounding box of the data (represented by the x,y coordinates of the four corners inclusive of the entire spatial data)
+*Note: 'extent' is the spatial bounding box of the data (represented by the x,y coordinates of the four corners inclusive of the entire spatial data)*
 
 ```{r}
 co_elevation <- get_elev_raster(co_counties, z = 7)
@@ -202,7 +204,7 @@ co_elevation <- get_elev_raster(co_counties, z = 7)
 qtm(co_elevation)
 ```
 
-By default, `tmap` uses a categorical symbology to color the cells by elevation. You can change that to a continuous palette like this:
+By default, `tmap` uses a categorical symbology to color the cells by elevation. You can change that to a continuous palette like this (an example of when `tm_shape()` allows us to edit the map more):
 
 ```{r}
 tm_shape(co_elevation)+
@@ -360,7 +362,7 @@ Import the county boundaries for your state:
 
 ```
 
-Import elevation for your state (using your new counties object as the extent/bounding box):
+Import elevation for your state (using your new counties object as the extent/bounding box and set `z = 7`):
 
 ```{r}
 
