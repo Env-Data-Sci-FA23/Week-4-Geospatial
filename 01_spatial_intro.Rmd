@@ -158,6 +158,8 @@ qtm(poudre_hwy)+
   qtm(poudre_points_sf)
 ```
 
+Note the 4-digit number we assign for `crs`. This is an EPSG code, which is tied to a specific CRS called WGS84 and one of the most common reference systems coordinates are recorded in (often noted by the fact that the values are in decimal degrees). This is used by Google Earth, the U.S. Department of Defense and all GPS satellites (among others). A full list of EPSG codes and coordinate reference systems can be found [here](https://spatialreference.org/ref/epsg/). Note, there are A LOT. Probably the most common used in the U.S. are WGS84 (a global CRS) and NAD83 (used by many U.S. federal agencies).
+
 ### Coordinate Reference Systems
 
 Probably the most important part of working with spatial data is the coordinate reference system (CRS) that is used. The CRS describes how and where your spatial data is located on Earth. There are numerous different CRS's depending on when and how the data was collected, the spatial location and extent it was collected, etc. In order to analyze and visualize spatial data, **all objects must be in the exact same CRS**.
@@ -374,7 +376,7 @@ Create an interactive map of your state counties and the elevation layer underne
 
 ```
 
-Choose a single county within your state county object, and crop your elevation layer to the extent of that county (*note:* use `filter()` to create an object of just your selected county that you want to crop to).
+Choose a single county within your state county object, and crop your elevation layer to the extent of that county (*note:* use `filter()` to create an object of just your selected county that you want to crop to). Follow the steps above we used to crop `co_elevation` to the poudre hwy.
 
 ```{r}
 
