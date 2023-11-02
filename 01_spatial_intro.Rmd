@@ -63,7 +63,7 @@ All the data we are working with in this lesson is confined to the state of Colo
 
 ```{r}
 # download county shapefile for the state of Colorado
-counties <- counties(state = "CO")
+co_counties <- counties(state = "CO")
 ```
 
 The `tigris` package is one of many data retrieval R packages that uses API calls to pull in data from various online/open databases directly into your R session, without the need to separately download. When you close out your R session, these 'temp' files are erased, so it does not use up any of your local storage.
@@ -75,7 +75,7 @@ At the end of this lesson you will learn how to save shapefiles to your computer
 `tigris` has many other data sets in addition to political boundaries. Today let's work with another shapefile, importing roads for Larimer county, which returns a polyline dataset for all roads in Larimer County.
 
 ```{r}
-roads <- roads(state = "CO", county = "Larimer")
+co_roads <- roads(state = "CO", county = "Larimer")
 ```
 
 ### [`tmap`](https://r-tmap.github.io/tmap/)
@@ -94,36 +94,40 @@ Lets view our Colorado counties and Larimer County roads shapefiles. To make a "
 
 ```{r}
 # Option 1: Using qtm()
-qtm(counties)+
-  qtm(roads)
+qtm(co_counties)+
+  qtm(co_roads)
 ```
 
 ```{r}
 # Option 2: Using tm_shape()
-tm_shape(counties)+
+tm_shape(co_counties)+
   tm_polygons()+
-tm_shape(roads)+
+tm_shape(co_roads)+
   tm_lines()
 ```
 
 Mess around with this map a little bit. See that you can change the basemap, turn layers on and off, and click on features to see their attributes.
 
+There are a ton of ways to customize these maps (more details on this in the spatial viz lesson!). For example, `counties` has an 'ALAND' variable, which represents the total land area of each county. To color by that variable we would use:
+
+```{r}
+qtm(co_counties, fill = "ALAND")
+```
+
 Let's inspect the spatial data sets a little more. What do you see when you run the following line of code?
 
 ```{r}
-class(counties)
+class(co_counties)
 ```
 
 ### [`sf`](https://r-spatial.github.io/sf/)
 
 By default, the `tigris` package imports spatial data in `sf` format, which stands for 'simple features'. The `sf` package provides an easy and efficient way to work with vector data, and represents spatial features as a `data.frame` or `tibble` with a **geometry** column, and therefore also works well with `tidyverse` packages to perform manipulations like you would a data frame.
 
-## Exercise #1
-
 For example, we are going to do an exercise for the Poudre Canyon Highway, so we want to filter out the roads data set to only those features. Using your investigative geography skills and your interactive map, find the highway on your map and find out what the exact 'FULLNAME' attribute is, and use that to `filter()` the data set. Call the new roads feature `poudre_hwy`.
 
 ```{r}
-poudre_hwy <- roads %>% 
+poudre_hwy <- co_roads %>% 
   filter(FULLNAME == "Poudre Canyon Hwy")
 
 qtm(poudre_hwy)
@@ -160,10 +164,10 @@ We can check a spatial object's CRS by printing it the object name to the consol
 
 ```{r}
 # see the CRS in the header metadata:
-counties
+co_counties
 
 #return just the CRS (more detailed)
-st_crs(counties)
+st_crs(co_counties)
 ```
 
 You can check if two objects have the same CRS like this:
@@ -191,69 +195,69 @@ Lets import some elevation data using the `elevatr` package. The function `get_e
 *Note*: 'extent' is the spatial bounding box of the data (represented by the x,y coordinates of the four corners inclusive of the entire spatial data)
 
 ```{r}
-elevation <- get_elev_raster(counties, z = 7)
+co_elevation <- get_elev_raster(co_counties, z = 7)
 ```
 
 ```{r}
-qtm(elevation)
+qtm(co_elevation)
 ```
 
 By default, `tmap` uses a categorical symbology to color the cells by elevation. You can change that to a continuous palette like this:
 
 ```{r}
-tm_shape(elevation)+
+tm_shape(co_elevation)+
   tm_raster(style = "cont", title = "Elevation (m)")
 ```
 
 When we see this on a map, we see that it actually extends beyond Colorado due to how the Terrain Tiles are spatially organized.
 
-Let's inspect this raster layer a little. By printing the object name to the console we see a bunch of metadata like resolution (cell size), extent, CRS, and file name.
+Let's inspect this raster layer a little. By printing the object name to the console we see a bunch of metadata like resolution (cell/pixel size), extent, CRS, and file name.
 
 ```{r}
-elevation
+co_elevation
 ```
 
 ### `terra`
 
-We can use the `terra` package to work with raster data. For example, we only want to see elevation along the Poudre highway. We can use `crop` to crop the raster to the extent of our `poudre_hwy` shapefile using the `ext()` function to get the extent (i.e., bounding box) of our `poudre_hwy` object.
+We use the `terra` package to work with raster data. For example, we only want to see elevation along the Poudre highway. We can use `crop` to crop the raster to the extent of our `poudre_hwy` spatial object using the `ext()` function to get the extent (i.e., bounding box) of our `poudre_hwy` object.
 
-However...the following line of code doesn't work:
+However...the following line of code **doesn't work:**
 
 ```{r}
 # If we try this, we get an error
-elevation_crop <- crop(elevation, ext(poudre_hwy))
+co_elevation_crop <- crop(co_elevation, ext(poudre_hwy))
 
 ```
 
-This doesn't work because our `elevation` object is actually not in the proper format to work with the `terra` package. The `elevatr` package still uses the `raster` package to work with raster data, however this package is outdated and we want to stick with `terra` for this course and any future work you do with raster data.
+This doesn't work because our `co_elevation` object is actually not in the proper format to work with the `terra` package. The `elevatr` package still uses the `raster` package to work with raster data, however this package is outdated and we want to stick with `terra` for this course and any future work you do with raster data.
 
 ```{r}
 # note the data type of elevation is RasterLayer
-class(elevation)
+class(co_elevation)
 ```
 
-`terra` using objects of a new class called `SpatRaster`. Converting a `RasterLayer` to a `SpatRaster` is quick using the `rast()` function.
+`terra` uses objects of a new class called `SpatRaster`. Converting a `RasterLayer` to a `SpatRaster` is quick using the `rast()` function.
 
 ```{r}
-elevation <- rast(elevation)
+co_elevation <- rast(co_elevation)
 ```
 
 Now check the class:
 
 ```{r}
-class(elevation)
+class(co_elevation)
 ```
 
 Now we can use `terra` functions, and re-run the `crop()` code we tried earlier:
 
 ```{r}
-elevation_crop <- crop(elevation, ext(poudre_hwy))
+co_elevation_crop <- crop(co_elevation, ext(poudre_hwy))
 ```
 
 Plot all our spatial layers together:
 
 ```{r}
-qtm(elevation_crop) +
+qtm(co_elevation_crop) +
   qtm(poudre_hwy) +
   qtm(poudre_points_prj)
 ```
@@ -262,7 +266,7 @@ qtm(elevation_crop) +
 
 ### 3.1 Writing spatial data
 
-All of the spatial data we've worked with are only saved as objects in our environment. To save the data to disk, the `sf` and `terra` packages have functions to do so. You are not required to save these files, but if you want to follow along with these functions save the data to the 'data/' folder you created at the beginning of this lesson.
+All of the spatial data we've worked with are only saved as objects in our environment. To save the data to disk, the `sf` and `terra` packages have functions to do so. You are not required to save these files, but if you want to follow along with these functions save the data to the 'data/' folder.
 
 To save vector data with `sf`, use `write_sf()`
 
@@ -272,26 +276,26 @@ write_sf(poudre_hwy, "data/poudre_hwy.shp")
 write_sf(poudre_points_prj, "data/poudre_points.shp")
 ```
 
-While you can give the file any name you want, note that you must put '.shp' as the extension of the file.
+While you can give the file any name you want, note that you **must put '.shp' as the extension of the file**. While '.shp' stands for 'shapefile', if you run the code above you'll notice a bunch of other files are saved, having the same file name but different extensions. These are auxiliary files required to properly work with the .shp shapefile. **If you ever want to share or move a shapefile,** **you must zip all the auxiliary files and .shp file together**. Think of them as a package deal!
 
 To save raster data with `terra` use `writeRaster()`
 
 ```{r}
-writeRaster(elevation_crop, "data/elevation_larimer.tif")
+writeRaster(co_elevation_crop, "data/poudre_elevation.tif")
 ```
 
-Same as with the vector data, when saving raster data you must add the '.tif' file extension to the name. There are various formats raster data can be stored as (e.g., ASCII, ESRI Grid) but GeoTiffs are the most common and generally easiest to deal with in R.
+Same as with the vector data, when saving raster data you **must add the '.tif' file extension** to the name. There are various formats raster data can be stored as (e.g., ASCII, ESRI Grid) but GeoTiffs are the most common and generally easiest to deal with in R.
 
 ### 3.2 .RData Files
 
 Another way you can store data is saving your environmental variables as R Data objects. You may have already seen '.RData' files in your folders before if you ever click 'yes' when closing out of RStudio asks you to save your workspace. What this does is save everything in your environment to a file with a '.RData' extension in your project directory, and then every time you open your project it reloads everything that was in the environment. This however is often poor practice, as it prevents you from writing reproducible code and all those variables start racking up storage space on your computer. We recommend changing this setting by going to Global Options and under 'Workspace' set 'Save workspace to .RData on exit' to '**Never**'.
 
-However, there are times you may want to save your variables as R files, such as when you have a set of variables you want to quickly re-load at the beginning of your session, or some files that are pretty large in size (R object files are much smaller). You can save single or multiple variables to an .RData file, or single variables to an .RDS file.
+However, there are times you may want to save your variables as R files, such as when you have a set of variables you want to quickly re-load at the beginning of your session, or some files that are pretty large in size which is often the case with spatial data (R object files are much smaller). **You can save single *or* multiple variables to an .RData file, or single variables to an .RDS file**.
 
-Since the `poudre_hwy` and `poudre_points_prj` were objects you created in this session, to avoid the need to recreate them you can save them to an .RData file:
+Since the `poudre_hwy` and `poudre_points_prj` were objects you created in this session, to avoid the need to recreate them you can save them to an .RData file with `save()` :
 
 ```{r}
-save(poudre_hwy, poudre_points_prj, file = "data/spatial_objects.RData")
+save(poudre_hwy, poudre_points_prj, file = "data/poudre_spatial_objects.RData")
 ```
 
 Note that you must add the 'file =' to your second argument.
@@ -305,45 +309,71 @@ rm(poudre_hwy, poudre_points_prj)
 See they are no longer in your Environment pane, but after you load the .RData file back in, it loads in those two objects with the same environmental names they were given when you saved them.
 
 ```{r}
-load("data/spatial_objects.RData")
+load("data/poudre_spatial_objects.RData")
 ```
 
-Note that `terra` objects don't properly save to .RData files, but there is a work around if you save a single `terra` object as an .RDS file. Here is that workflow, there is just a second step to 'unpack' the loaded .RDS object with `rast()`.
+Note that `terra` objects don't properly save to .RData files, but there is a work around if you save a single `terra` object as an .RDS file with `saveRDS`. Here is that workflow, there is just a second step to 'unpack' the loaded .RDS object with `rast()`.
 
 ```{r}
-saveRDS(elevation_crop, "data/elevation_crop.RDS")
+saveRDS(co_elevation_crop, "data/poudre_elevation.RDS")
 ```
 
 ```{r}
-readRDS("data/elevation_crop.RDS") %>% rast()
+readRDS("data/poudre_elevation.RDS") %>% rast()
 ```
 
 Note that with .RDS files you must assign the loaded file to a new environmental variable (unlike with .RData that returns the objects with the exact names they had before).
 
 ### 3.3 Reading Spatial Data
 
-To read in shapefiles, you use `read_sf()`
+To read in shapefiles, you use `read_sf()` . If you saved the `poudre_hwy` shapefile in the steps above, you can load it back into your environment like this:
 
 ```{r}
 read_sf("data/poudre_hwy.shp")
 ```
 
-See that when you saved the shapefiles, there were many other auxiliary files saved with it. It is VERY important that whenever you share shapefiles, all the auxiliary files are saved with it, so often shapefiles are transferred via .zip folders. However, when reading shapefiles into R you only specify the file with the '.shp' extension. As long as all the other auxiliary files are saved in that same folder, it will read in the shapefile correctly.
+Notice that when reading shapefiles into R you only specify the file with the '.shp' extension, and don't need to pay much attention to any of those auxiliary files. As long as all the other auxiliary files are saved in that same folder, it will read in the shapefile correctly, but if you are missing any then the .shp file becomes useless on its own.
 
 To read in raster files you use the `rast()` function and file path with the appropriate file extension
 
 ```{r}
-rast("data/elevation_larimer.tif")
+rast("data/poudre_elevation.tif")
 ```
 
-Remember when reading in files you will want to assign them to a new variable name with `<-` to keep them in your environment.
+**Remember when reading in files you will want to assign them to a new variable name with `<-` to keep them in your environment**.
 
-### 4. Exercises
+## 4. Exercises
 
-1.  Filter out the `counties` data set to only include Larimer, Denver, and Pueblo counties.
+1.  **Explore the use of `extract` from the `terra` package by running `?terra::extract`. (Note we need to specify `terra::` because 'extract' is a function name in multiple packages we may have loaded in our session).**
 
-2.  Make a map of the `counties` data colored by county area. Make a second map of counties colored by their total area of water.
+    **How would you extract the elevation at each of the three points in `poudre_points_prj` ? (2 pts)**
 
-3.  Make a barplot comparing the elevation of your 3 points in the Poudre Canyon (note: explore the `extract()` function in the `terra` package).
+    ```{r}
 
-4.  Why are there 4 features in our Poudre Canyon Highway variable instead of 1?
+    ```
+
+2.  **Choose your favorite state (other than Colorado). For that state, carry out the following tasks: (8 pts)**
+
+Import the county boundaries for your state:
+
+```{r}
+
+```
+
+Import elevation for your state (using your new counties object as the extent/bounding box):
+
+```{r}
+
+```
+
+Create an interactive map of your state counties and the elevation layer underneath (*note:* use `?qtm` to see the argument options for `fill =` to draw only the county borders, i.e. remove the fill color).
+
+```{r}
+
+```
+
+Choose a single county within your state county object, and crop your elevation layer to the extent of that county (*note:* use `filter()` to create an object of just your selected county that you want to crop to).
+
+```{r}
+
+```
