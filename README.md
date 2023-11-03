@@ -28,6 +28,6 @@ As a reminder, it is okay to submit the pull request before you've finished all 
 
 There are a few lessons/challenges that are **not required** but may be worth your time (and extra credit..). Located in the 'bonus/' subfolder, you will find the following files:
 
-- **get_spatial_challenge.Rmd**
+- **get_spatial_challenge.Rmd** : Worth up to 3 extra credit points if fully completed
 
-- **spatial_viz.Rmd**
+- **spatial_viz.Rmd** : A fun lesson to explore more visualization techniques
