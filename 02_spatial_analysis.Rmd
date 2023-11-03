@@ -228,17 +228,17 @@ First, lets explore the landcover raster by making a quick plot.
 qtm(landcover)
 ```
 
-This land cover data set includes attributes (land cover classes) associated with raster values. We can quickly view the frequency of each land cover type with the `freq()` function.
+This land cover data set includes attributes (land cover classes) associated with raster values. The is because of the .aux auxiliary file paired with the .tif. in the 'data/' folder. Similar to shapefiles, this file provides metadata (in this case land cover class names) to the raster file.
+
+We can quickly view the frequency of each land cover type with the `freq()` function, where 'count' is the number of pixels in the raster of that landcover type.
 
 ```{r}
 freq(landcover)
 ```
 
-Use `ggplot2` to turn this into a bar chart
+### Exercise 4
 
-<details>
-
-<summary>Show Answer</summary>
+Create a bar chart of landcover frequency, and order the bars highest to lowest (see [this resource](https://sebastiansauer.github.io/ordering-bars/) to guide you on sorting bars by a numeric variable/column). Also investigate the use of `coor_flip()` and how it might make your plot look better...
 
 ```{r}
 freq(landcover) %>% 
@@ -248,18 +248,12 @@ freq(landcover) %>%
   coord_flip() # switch the axes to better view land cover class names
 ```
 
-</details>
+Say we want to explore some habitat characteristics of our species of interest, and we are specifically interested in forest cover. We can use raster reclassification to create a new layer of just forest types in Colorado.
 
-<br>
-
-Say we want to explore some habitat characteristics of our species of interest, and we are specifically interested in forest cover. Our first step is to create a new raster layer from our land cover layer representing percent forest cover. This will involve multiple operations, including raster reclassification and focal statistics. Specifically, say we want to calculate the average percentage of forest cover and urbanization within a 9x9 pixel moving window (remember since rasters are made up of pixels, the distances we use are dependent on the resolution of the raster).
-
-First , reclassify the land cover raster creating a new raster representing just forest/non-forest pixels.
-
-Since rasters are technically matrices, we can index and change values using matrix operations. Given this particular raster uses character names associated with values (thanks to the .aux file!), we can index by those names.
+Since rasters are technically matrices, we can using **indexing** and change values quickly using matrix operations. Given this particular raster uses character names associated with values (thanks to the .aux file!), we can index by those names.
 
 ```{r}
-#first assign landcover to a new object name so we can manipulate it while keeping the origian
+#first assign landcover to a new object name so we can manipulate it while keeping the original
 forest <- landcover
 
 #where the raster equals any of the forest categories, set that value to 1
@@ -268,7 +262,7 @@ forest[forest %in% c("Deciduous Forest", "Evergreen Forest", "Mixed Forest")] <-
 #SPELLING IS IMPORTANT
 
 #now set all non forest pixels to NA
-forest[forest != 1] <- NA
+forest[forest != 1] <- 0
 ```
 
 Now plot the new forest layer to get a quick sense if it looks accurate or not.
@@ -277,7 +271,46 @@ Now plot the new forest layer to get a quick sense if it looks accurate or not.
 plot(forest)
 ```
 
-## Focal Statistics
+## Zonal Statistics
+
+Now we want to know what percentage of forest is found in our species' habitats. In this case we are going to define 'habitats' as a 1 km region around each species occurrence.
+
+So first, let's buffer our points, using the occurrences for just Larimer county (`occ_prj`) for faster computing and using `5000` as our distance since length units of our CRS is in meters. *Note:* this may take a few seconds to run
+
+```{r}
+occ_buffer <- st_buffer(occ_larimer, 2000)
+```
+
+```{r}
+qtm(occ_buffer, fill = NULL) +
+  qtm(landcover)
+```
+
+`occ_buffer` is now a polygon layer, that we can use as our 'zones' to calculate percent forest cover within.
+
+But first! We are about to do some analysis, we have to check if the CRS of our two objects match. With rasters (and vectors) you can use `crs()` to return the CRS of that object. So, we can check if they match like this:
+
+```{r}
+crs(occ_buffer) == crs(forest)
+```
+
+Oh no, they are not the same! It technically doesn't matter which object we transform the CRS of, but to learn how to transform rasters let's transform our forest layer to the CRS of the occurrences. In terra, we can transform with the `project()` function. Let's create a new object for this transformed raster layer:
+
+```{r}
+forest_prj <- project(forest, crs(occ_buffer))
+```
+
+Double check that they match now:
+
+```{r}
+crs(forest_prj) == crs(occ_buffer)
+```
+
+Yay! Now we can continue with the analysis. There are a couple ways to perform zonal statistics
+
+```{r}
+zonal(forest_prj, vect(occ_buffer), fun = sum, na.rm = TRUE)
+```
 
 Now we are going to perform focal statistics with the `focal()` function, which is a spatial operation that calculates new values for each cell based on a specified moving window. For this example we are going to calculate within a 9x9km moving window (since our pixel resolution is 1km). We supply this to the `w =` argument as a matrix, where the first value is the weight of each pixel, and the second two are the number of rows and columns. Second we use the "sum" function, since each forest pixel has a value of 1 we will get the total number of forest pixels within the moving window, and then later divide the values by the total number of pixels in the window (81) to get the percentage. The final raster values will represent for each pixel the surrounding forest percentage (within \~4.5 km radius).
 
