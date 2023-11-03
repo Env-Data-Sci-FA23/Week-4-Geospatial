@@ -85,9 +85,7 @@ st_crs(rivers) == st_crs(occ_sp)
 The CRS of our objects does not match. Using what you learned in week one, conduct a spatial transformation to our `occ_sp` object to coerce it to the same CRS of our `rivers` object. Call the new object `occ_prj` and double check that `rivers` and our new occurrences object are in the same CRS after transforming
 
 ```{r}
-occ_prj <- st_transform(occ_sp, st_crs(rivers))
 
-st_crs(occ_prj) == st_crs(rivers)
 ```
 
 Now lets visualize our rivers and occurrence data:
@@ -108,11 +106,7 @@ Use `?st_filter` to explore the use of the function, and then use it to filter o
 *Note:* You will first need to create a spatial object of just Larimer county to use as a filter.
 
 ```{r}
-larimer <- counties %>% filter(NAME == "Larimer")
 
-occ_larimer <- st_filter(occ_prj, larimer)
-
-qtm(occ_larimer)
 ```
 
 ```{r}
@@ -149,12 +143,6 @@ Cool, now you have the distance to the nearest river (in meters) for each indivi
 *Hint*: remember that the new distance column is a 'units' data type will throw an error when you try to plot those values. You will need to make use of `mutate()` and `as.numeric` within your string of operations in order to complete task.
 
 ```{r}
-occ_larimer %>% 
-  mutate(river_dist_m = as.numeric(river_dist_m)) %>% 
-  group_by(Species) %>% 
-  summarize(mean_distance = mean(river_dist_m)) %>% 
-  ggplot(aes(x = Species, y = mean_distance)) +
-  geom_col()
 
 
 ```
@@ -241,11 +229,7 @@ freq(landcover)
 Create a bar chart of landcover frequency, and order the bars highest to lowest (see [this resource](https://sebastiansauer.github.io/ordering-bars/) to guide you on sorting bars by a numeric variable/column). Also investigate the use of `coor_flip()` and how it might make your plot look better...
 
 ```{r}
-freq(landcover) %>% 
-  ggplot(aes(reorder(value, count), count)) +
-  labs(x = "") +
-  geom_col() +
-  coord_flip() # switch the axes to better view land cover class names
+
 ```
 
 Say we want to explore some habitat characteristics of our species of interest, and we are specifically interested in forest cover. We can use raster reclassification to create a new layer of just forest types in Colorado.
@@ -333,9 +317,7 @@ Value and NLCD.Land.Cover.Class are our cell value - class pairs. Now we want to
 Perform the appropriate `*_join` operation to tie our `county_landcover` and `classes` data frames together. Then make a map of the counties each colored/filled by the most common NLCD land cover class.
 
 ```{r}
-county_lc_joined <- inner_join(county_landcover, classes, by = "value")
 
-qtm(county_lc_joined, fill = "NLCD.Land.Cover.Class")
 ```
 
 ### Exercise 6
@@ -345,13 +327,5 @@ Find the average elevation each species occurs at (for all Colorado occurrences)
 *Hints*: Use the `elevation` and `occ_prj` objects we have created or read in above. Remember to check the CRS and perform a spatial transformation if necessary! All parts needed to answer this question have been introduced in this lesson plan.
 
 ```{r}
-crs(elevation) == crs(occ_prj)
 
-elevation_prj <- project(elevation, crs(occ_prj))
-
-occ_prj %>% 
-  mutate(elevation = extract(elevation_prj, occ_prj)) %>% 
-  unnest(elevation) %>% 
-  group_by(Species) %>% 
-  summarize(avg_elevation = mean(Elevation, na.rm = TRUE))
 ```
