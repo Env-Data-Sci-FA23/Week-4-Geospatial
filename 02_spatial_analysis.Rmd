@@ -262,7 +262,7 @@ forest[forest %in% c("Deciduous Forest", "Evergreen Forest", "Mixed Forest")] <-
 #SPELLING IS IMPORTANT
 
 #now set all non forest pixels to NA
-forest[forest != 1] <- 0
+forest[forest != 1] <- NA
 ```
 
 Now plot the new forest layer to get a quick sense if it looks accurate or not.
@@ -270,8 +270,6 @@ Now plot the new forest layer to get a quick sense if it looks accurate or not.
 ```{r}
 plot(forest)
 ```
-
-Calc distance to forest
 
 ## Extraction Statistics
 
@@ -296,7 +294,7 @@ However, since `extract()` returns a 2 column data frame, it will nest this into
 
 ```{r}
 occ_landcover <- occ_prj %>%
-  mutate(common_landcover = extract(landcover_prj, .)) %>%
+  mutate(common_landcover = extract(landcover_prj, occ_prj)) %>%
   unnest(common_landcover) %>% 
   #lets rename the land cover column which is now called "NLCD Land Cover Class"
   rename(common_landcover = "NLCD Land Cover Class")
@@ -312,11 +310,7 @@ occ_landcover %>%
   slice(which.max(n)) #returns the row with the highest count "n"
 ```
 
-### Exercise 5
-
-Use `extract()` to find the most common landcover type in each Colorado county.
-
-*Hint*: For polygon operations, explore which mathematical function you can use to return the most common element...Using `?terra::extract` might help.
+We can also use `extract()` to extract raster values within polygons, but here must supply some function of how to summarize all the values within each polygon. For this example, lets fine the most common landcover type in each Colorado county.
 
 ```{r}
 county_landcover <- 
@@ -344,78 +338,20 @@ county_lc_joined <- inner_join(county_landcover, classes, by = "value")
 qtm(county_lc_joined, fill = "NLCD.Land.Cover.Class")
 ```
 
-But first! We are about to do some analysis, we have to check if the CRS of our two objects match. With rasters (and vectors) you can use `crs()` to return the CRS of that object. So, we can check if they match like this:
+### Exercise 6
+
+Find the average elevation each species occurs at (for all Colorado occurrences). Which species is, on average, found at the highest elevations?
+
+*Hints*: Use the `elevation` and `occ_prj` objects we have created or read in above. Remember to check the CRS and perform a spatial transformation if necessary! All parts needed to answer this question have been introduced in this lesson plan.
 
 ```{r}
-crs(occ_buffer) == crs(forest)
+crs(elevation) == crs(occ_prj)
+
+elevation_prj <- project(elevation, crs(occ_prj))
+
+occ_prj %>% 
+  mutate(elevation = extract(elevation_prj, occ_prj)) %>% 
+  unnest(elevation) %>% 
+  group_by(Species) %>% 
+  summarize(avg_elevation = mean(Elevation, na.rm = TRUE))
 ```
-
-Oh no, they are not the same! It technically doesn't matter which object we transform the CRS of, but to learn how to transform rasters let's transform our forest layer to the CRS of the occurrences. In terra, we can transform with the `project()` function. Let's create a new object for this transformed raster layer:
-
-```{r}
-forest_prj <- project(forest, crs(occ_buffer))
-```
-
-Double check that they match now:
-
-```{r}
-crs(forest_prj) == crs(occ_buffer)
-```
-
-Yay! Now we can continue with the analysis. There are a couple ways to perform zonal statistics
-
-```{r}
-zonal(forest_prj, vect(occ_buffer), fun = sum, na.rm = TRUE)
-```
-
-## Raster Extract
-
-Now we can use the `extract()` function to extract the raster pixel value at each occurrence.
-
-```{r}
-terra::extract(forest_pct, occ)
-```
-
-### Exercise #5
-
-Notice that this returns a 2 column data frame, with an ID for each feature (occurrence) and the extracted raster value in the second column. How would you write this line of `extract()` code to add a single column to the occurrence data set of just the forest percentage value?
-
-*Hint:* Use your knowledge of indexing!
-
-Then calculate the average forest cover for each species. On average, which species is associated with the highest percentage of forest cover?
-
-Create a boxplot to compare the spread of values across species.
-
-<hr>
-
-That's one way to use the `extract()` function. We can also extract raster values within polygons, and supply a function to summarize those raster values.
-
-### Exercise #6
-
-Calculate the most common landcover type in each Colorado county, working through the following steps **filling in the necessary code**:
-
-Project the landcover raster to the CRS of the counties shapefile
-
-```{r}
-landcover_prj <- terra::project()
-```
-
-Add a new column to `counties` that is the most common land cover type, using the function `modal` within `extract()`.
-
-```{r}
-counties$common_landcover <- terra::extract()
-```
-
-Notice however that this returns the raw raster values, which are not informative to us without knowing the associated landcover classes.
-
-Since we have the associated auxillary file with this raster, we can extract metadata to get the value/class pairs with the `cats()` function.
-
-```{r}
-cats(landcover)
-```
-
-Look at what class this function returns though. Coerce this into a data frame (there are multiple ways you could do this). Once you have have it as a data frame, use some `dplyr` operations to select just the value and land cover class columns, and remove all the empty rows (i.e., those without a landcover class). This should return a data frame of 17 rows. Call it `nlcd_classes`.
-
-Then tie `nlcd_classes` to the `counties` data frame with `left_join()`, which will join two data frames by a common variable. In this case, your common variable is the raw raster value. Look at the documentation for `left_join()` and how you use the `by =` argument to complete this step.
-
-Finally, create a map of Colorado counties that is colored by the most common landcover type (using the class, not the raw value) in each county. The map can be interactive or static, but must include a legend.
