@@ -271,22 +271,78 @@ Now plot the new forest layer to get a quick sense if it looks accurate or not.
 plot(forest)
 ```
 
-## Zonal Statistics
+Calc distance to forest
 
-Now we want to know what percentage of forest is found in our species' habitats. In this case we are going to define 'habitats' as a 1 km region around each species occurrence.
+## Extraction Statistics
 
-So first, let's buffer our points, using the occurrences for just Larimer county (`occ_prj`) for faster computing and using `5000` as our distance since length units of our CRS is in meters. *Note:* this may take a few seconds to run
+When we want to summarize raster values for certain shapes (points, polygons, etc), the `extract()` function from the `terra` package helps us do that.
+
+Say we want to find out the most common land cover type each of our species is found in. We can use `extract()` to get the landcover value from the raster at each of our occurrence points, and then do some summary statistics.
+
+Within this function, the first element is the raster you want to get values from, and the second element is the spatial layer you want to extract values at. Here we will use our `landcover` raster layer and the `occ_prj` object to extract values for occurrences across Colorado.
+
+First, we need to project our landcover raster to the CRS of our occurrences, otherwise the operation will only return NAs.
 
 ```{r}
-occ_buffer <- st_buffer(occ_larimer, 2000)
+# project the landcover layer
+landcover_prj <- project(landcover, crs(occ_prj))
+
+extract(landcover_prj, occ_prj)
 ```
+
+Notice that this returns a 2 column data frame, with an ID for each feature (occurrence) and the extracted raster value in the second column. We can actually use `extract()` within `mutate()` to add the values as a new column to our occurrences data frame so we can do further summary statistics.
+
+However, since `extract()` returns a 2 column data frame, it will nest this into a single column in the `occ_prj` data frame. To separate this into two separate columns we can use `unnest()` :
 
 ```{r}
-qtm(occ_buffer, fill = NULL) +
-  qtm(landcover)
+occ_landcover <- occ_prj %>%
+  mutate(common_landcover = extract(landcover_prj, .)) %>%
+  unnest(common_landcover) %>% 
+  #lets rename the land cover column which is now called "NLCD Land Cover Class"
+  rename(common_landcover = "NLCD Land Cover Class")
 ```
 
-`occ_buffer` is now a polygon layer, that we can use as our 'zones' to calculate percent forest cover within.
+Now, we can find the most common land cover type for each species, using some tidyverse wrangling. Note the use of `st_drop_geometry()`, this reverts the sf object back to an original data frame, which is required for some tidyverse operations.
+
+```{r}
+occ_landcover %>% 
+  st_drop_geometry() %>% # this converts the data back to a dataframe, required for some tidyverse operations
+  group_by(Species) %>% 
+  count(common_landcover) %>% 
+  slice(which.max(n)) #returns the row with the highest count "n"
+```
+
+### Exercise 5
+
+Use `extract()` to find the most common landcover type in each Colorado county.
+
+*Hint*: For polygon operations, explore which mathematical function you can use to return the most common element...Using `?terra::extract` might help.
+
+```{r}
+county_landcover <- 
+  counties %>%
+  mutate(landcover = extract(landcover_prj, counties, fun = "modal")) %>%
+  unnest(landcover) %>%
+  rename(value = "NLCD Land Cover Class") #renaming this helps us perform a join later on...
+```
+
+Uh oh, this gives us the raw pixel values instead of the land cover classes. We can get a table of value - class pairs by using the `cats()` function:
+
+```{r}
+classes <- as.data.frame(cats(landcover)) #coerce to a data frame because cats() actually returns it as a list
+```
+
+Value and NLCD.Land.Cover.Class are our cell value - class pairs. Now we want to join this to our `county_landcover` object to get the actual land cover name.
+
+### Exercise 5
+
+Perform the appropriate `*_join` operation to tie our `county_landcover` and `classes` data frames together. Then make a map of the counties each colored/filled by the most common NLCD land cover class.
+
+```{r}
+county_lc_joined <- inner_join(county_landcover, classes, by = "value")
+
+qtm(county_lc_joined, fill = "NLCD.Land.Cover.Class")
+```
 
 But first! We are about to do some analysis, we have to check if the CRS of our two objects match. With rasters (and vectors) you can use `crs()` to return the CRS of that object. So, we can check if they match like this:
 
@@ -311,32 +367,6 @@ Yay! Now we can continue with the analysis. There are a couple ways to perform z
 ```{r}
 zonal(forest_prj, vect(occ_buffer), fun = sum, na.rm = TRUE)
 ```
-
-Now we are going to perform focal statistics with the `focal()` function, which is a spatial operation that calculates new values for each cell based on a specified moving window. For this example we are going to calculate within a 9x9km moving window (since our pixel resolution is 1km). We supply this to the `w =` argument as a matrix, where the first value is the weight of each pixel, and the second two are the number of rows and columns. Second we use the "sum" function, since each forest pixel has a value of 1 we will get the total number of forest pixels within the moving window, and then later divide the values by the total number of pixels in the window (81) to get the percentage. The final raster values will represent for each pixel the surrounding forest percentage (within \~4.5 km radius).
-
-```{r}
-forest_pct <- terra::focal(forest, w=matrix(1,9,9), fun = "sum", na.rm = TRUE)
-
-
-forest_pct <- forest_pct/81
-
-
-plot(forest_pct)
-```
-
-Next, we wanted to know the percent forest cover associated with each species occurrence. Since we are now working with multiple spatial objects, we have to first check they are all in the same CRS and if not transform the data before any spatial operations.
-
-```{r}
-crs(forest_pct)
-
-st_crs(occ)
-```
-
-### Exercise #4
-
-Looks like the raster layer is in a different CRS. Reproject this so we can use it with our vector data (which are all in NAD83) using the `project()` function from `terra`, and write a line of code that checks whether or not the new object and the `occ` object have the same CRS
-
-<hr>
 
 ## Raster Extract
 
