@@ -25,6 +25,11 @@ load("data/spatdat.RData")
 landcover <- terra::rast("data/NLCD_CO.tif")
 
 elevation <- terra::rast("data/elevation.tif")
+
+# clean up the occ data and make spatial
+occ <- bind_rows(occ) %>% 
+  st_as_sf(coords = c("decimalLongitude", "decimalLatitude"), crs = 4236)
+
 ```
 
 ## Mapping with `ggplot2`
@@ -73,7 +78,7 @@ You can save `ggplot2` maps/plots either directly from the "Plots" viewing pane 
 
 ## Mapping with `tmap`
 
-We've already been using `tmap` to quickly view our results, but there are also a lot of ways to create custom cartographic products with this package.
+We've already been using`qtm` from `tmap` to quickly view our results interactively, but there are also a lot of ways to create custom cartographic products with this package.
 
 Set `tmap_mode()` to "plot" to make static maps.
 
@@ -172,7 +177,10 @@ Building off of this, we can view multiple attributes at once using polygon colo
 First: Calculate total species occurrences per county and add it as a new column to `counties`
 
 ```{r}
-counties$species_count <- lengths(st_intersects(counties, occ))
+# we first need to project our occurrences
+occ_prj <- st_transform(occ, st_crs(counties))
+
+counties$species_count <- lengths(st_intersects(counties, occ_prj))
 ```
 
 ```{r}
@@ -210,14 +218,11 @@ tm_shape(occ) +
 
 ### `tmap` tips
 
-Can't decide on a color palette? `tmap` has a built in tool that allows you decide.
+Can't decide on a color palette? `tmap` has a built in tool that allows you decide. (Note: you may be prompted to install the `shiny` package to view this, you should do that since we will be using `shiny` later in this course)
 
 ```{r eval=FALSE}
-
 tmaptools::palette_explorer()
 ```
-
-![](images/palette_explorer.png){width="457"}
 
 Want a cool `tmap` tip?
 
@@ -307,10 +312,14 @@ elevation_larimer <- terra::crop(elevation, larimer)
 
 ```
 
+You may be prompted to install the `gifski` package to run the following, so do that first.
+
 ```{r}
 #| eval: false
 tmap_animation(m1, filename = "data/snotel.gif", width = 1200, height = 600, delay = 15)
 ```
+
+Open the `snotel.gif` you just created to see the animation!
 
 ## Interactive Mapping
 
@@ -322,17 +331,17 @@ tmap_mode("view")
 
 From the previous maps it looks like some of the highest densities of species occurrences are in the Rocky Mountain National Park region. Lets make an interactive map, and add the park boundary to see if this is true.
 
-Note the `getBoundary()` script in this repo that contains a function to pull park boundary shapefiles (using the same IRMA API you used in Week 3!). Inspect that script and `source()` it into your session so you can use it to import the boundary shapefile for Rocky Mountain National Park (ROMO).
+You have a shapefile in your "data/" folder we gave you called 'Boundary\_\_Line'. This is the boundary of Rocky Mountain National Park
 
 ```{r}
-ROMO <- getParkBoundary(park = 'ROMO')
+ROMO <- st_read("data/Boundary__Line_.shp")
 ```
 
 Now lets make an interactive map of both the park boundary and the species occurrences.Note that `alpha` controls the transparency/opacity of layers, with a range of 0 (totally transparent) to 1 (non-transparent).
 
 ```{r}
 tm_shape(ROMO) +
-  tm_polygons(alpha = 0.5, title = "Rocky Mountain National Park") +
+  tm_lines() +
 tm_shape(occ) +
   tm_dots(col = "Species",
             alpha = 0.75,
@@ -346,7 +355,7 @@ To improve the user experience, we can customize what content displays in the po
 
 ```{r}
 tm_shape(ROMO) +
-  tm_polygons(alpha = 0.5, title = "Rocky Mountain National Park") +
+  tm_lines() +
   tm_shape(occ) +
   tm_dots(
     col = "Species",
@@ -357,10 +366,6 @@ tm_shape(ROMO) +
                    "Month" = "month")
   )
 ```
-
-## Exercise #1
-
-Use `extract` from the `terra` package to create a new column in the `occ` dataset that includes the elevation for each occurrence. Then edit the interactive map you just made above but add 'Elevation' to the popup.
 
 ## More visualization packages to explore
 
@@ -383,14 +388,4 @@ plot_ly(snotel_data) %>%
   layout(yaxis = list(title = "Snow Depth (in)"))
 ```
 
-## Exercise #2
-
-Use the `unit_visitation()` function you created in Week 3 to import visitation data for Death Valley (DEVA), Joshua Tree (JOTR), Mojave (MOJA), Bryce Canyon (BRCA) and Zion (ZION) parks from 1980 to 2021. Second, use the `getBoundary()` function to import the park boundaries fro DEVA, JOTR, and MOJA.
-
-First, create an interactive time series plot of visitation for all three parks (in the same plot) from 1980 - 2021. Show the total number of Recreation Visitors per year in each park.
-
-Second, join your visitation data to the park boundary data and create a map where each park polygon is colored by their visitation data for the year 2021. Use a continuous color scale and add a legend (this can be interactive or static).
-
-## Exercise #3
-
-Using what you learned today and the data sets imported/created so far (or your own data!!) create your own unique spatial data visualization. It can be static, interactive, animated, whatever interests you the most and puts your visualization skills to the test.
+## 
