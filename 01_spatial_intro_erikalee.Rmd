@@ -371,15 +371,13 @@ rast("data/poudre_elevation.tif")
 
 Import the county boundaries for your state:
 
-```{r}
-ca_counties <- counties(state = "CA")
-```
-
 Import elevation for your state (using your new counties object as the extent/bounding box and set `z = 7`):
 
 ```{r}
 
 tmap_mode("view")
+
+ca_counties <- counties(state = "CA")
 
 ca_elevation <- get_elev_raster(ca_counties, z = 7)
 
