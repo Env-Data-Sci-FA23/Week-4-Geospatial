@@ -155,7 +155,8 @@ mean_river_dist <- occ_larimer %>%
 
 mean_river_dist%>%
   ggplot()+
-  geom_col(aes(x=Species, y=mean_river_dist_m))
+  geom_col(aes(x=Species, y=mean_river_dist_m))+
+  labs(y = "Mean Distance from River (m)")
 ```
 
 Which species is, on average, found closest to a river?
