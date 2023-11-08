@@ -6,7 +6,7 @@ output: github_document
 ---
 
 ```{r setup, include= FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, eval = FALSE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
 ## 1. Spatial Data Formats
@@ -229,7 +229,7 @@ However...the following line of code **doesn't work:**
 
 ```{r}
 # If we try this, we get an error
-co_elevation_crop <- crop(co_elevation, ext(poudre_hwy))
+#co_elevation_crop <- crop(co_elevation, ext(poudre_hwy))
 
 ```
 
@@ -285,7 +285,7 @@ While you can give the file any name you want, note that you **must put '.shp' a
 To save raster data with `terra` use `writeRaster()`
 
 ```{r}
-writeRaster(co_elevation_crop, "data/poudre_elevation.tif")
+writeRaster(co_elevation_crop, "data/poudre_elevation.tif", overwrite = TRUE)
 ```
 
 Same as with the vector data, when saving raster data you **must add the '.tif' file extension** to the name. There are various formats raster data can be stored as (e.g., ASCII, ESRI Grid) but GeoTiffs are the most common and generally easiest to deal with in R.
@@ -352,32 +352,90 @@ rast("data/poudre_elevation.tif")
 
     **How would you extract the elevation at each of the three points in `poudre_points_prj` ? (2 pts)**
 
-    ```{r}
+```{r}
+# elevation raster
+elevation <- terra::rast("data/elevation.tif")
 
-    ```
+# elevation values at the three points
+elevation_values <- terra::extract(elevation, poudre_points_prj)
+```
+
+```{r}
+poudre_points_prj
+```
 
 2.  **Choose your favorite state (other than Colorado). For that state, carry out the following tasks: (8 pts)**
 
 Import the county boundaries for your state:
 
 ```{r}
+# download county shapefile for the state of New York
+ny_counties <- counties(state = "NY")
 
+# check the data
+ny_counties
 ```
 
 Import elevation for your state (using your new counties object as the extent/bounding box and set `z = 7`):
 
 ```{r}
+ny_elevation <- get_elev_raster(ny_counties, z = 7)
 
+ny_elevation
 ```
+
+
+```{r}
+#qtm(ny_elevation)
+```
+
+```{r}
+#ny_elevation_crop <- crop(ny_elevation, ext(ny_counties))
+``` 
 
 Create an interactive map of your state counties and the elevation layer underneath (*note:* use `?qtm` to see the argument options for `fill =` to draw only the county borders, i.e. remove the fill color).
 
 ```{r}
+# # interactive map
+# tm_shape(ny_counties) +
+#   tm_borders(lwd = 0.5) +
+#   tm_shape(ny_elevation_crop) +
+#   tm_raster(style = "cont") + #tried using `fill =` here and I couldn't get this to work to remove the fill color
+#   tm_layout(frame = FALSE)
+# 
+# # view
+# tmap_mode("view")
+
+qtm(ny_elevation)+
+  qtm(ny_counties, fill=NULL)
 
 ```
+
 
 Choose a single county within your state county object, and crop your elevation layer to the extent of that county (*note:* use `filter()` to create an object of just your selected county that you want to crop to). Follow the steps above we used to crop `co_elevation` to the poudre hwy.
 
 ```{r}
-
+# county selection
+kings_county<- ny_counties %>% 
+  filter(NAME == "Kings")
 ```
+
+```{r}
+ny_elevation <- rast(ny_elevation)
+```
+
+```{r}
+# crop
+elevation_kings_county <- crop(ny_elevation, kings_county, mask = TRUE)
+```
+
+```{r}
+qtm(elevation_kings_county) + 
+  qtm(kings_county, fill = NULL)
+```
+
+
+
+
+
+
