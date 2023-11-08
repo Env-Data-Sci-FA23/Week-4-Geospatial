@@ -150,8 +150,7 @@ Cool, now you have the distance to the nearest river (in meters) for each indivi
 mean_river_dist <- occ_larimer %>%
   mutate(as.numeric(river_dist_m))%>%
   group_by(Species)%>%
-  summarise(mean_river_dist_m = mean(river_dist_m))%>%
-  mutate(mean_river_dist_m = as.numeric(mean_river_dist_m))
+  summarise(mean_river_dist_m = as.numeric(mean(river_dist_m)))
 
 mean_river_dist%>%
   ggplot()+
@@ -221,6 +220,8 @@ Elk are most often found within 100m of a river.
 #### Reflection
 
 This analysis is just for teaching purposes, why would you be cautious about these results for answering real research questions? Think about how we filtered everything to a political boundary, what's wrong with this method?
+
+By just looking at data within Larimer county (i.e. a political boundary) we may not be looking at the most representative sample for each species, since the landcover, elevation, etc. of just Larimer county will likely skew the data compared to looking at the state as a whole.
 
 ## Raster Reclassification
 
