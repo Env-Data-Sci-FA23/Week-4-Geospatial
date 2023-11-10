@@ -187,19 +187,28 @@ How many SNOTEL sites are located in Colorado? --\> 8
 Below is the string of operations you would use to import data for a single SNOTEL site for the years 2020 to 2022. Use `purrr::map()` to pull data for all unique SNOTEL sites in the `snotel_sites` object you just created. Coerce the data to a single data frame, then as a final step use `left_join()` to join the snow depth data to the station data to get the coordinates for all the sites, and make it a spatial object.
 
 ```{r}
-#First Site ID
-Site <- unique(snotel_sites$Site)[1]
+
+fetch_snotel_data <- function(x) {
+  fetchSCAN(site.code = x, year = 2020:2022, timeseries = "Daily") %>%
+    bind_rows() %>%
+    as_tibble() %>%
+    filter(sensor.id == "SNWD.I") %>% 
+    select(-starts_with("Name"), -pedlabsampnum)
+}
 
 
-data <- fetchSCAN(site.code = Site, 
-                  year = 2020:2022) %>%
-  # this returns a list for each variable, bind them to a single df
-  bind_rows() %>%
-  as_tibble() %>%
-  #filter just the snow depth site
-  filter(sensor.id == "SNWD.I") %>% 
-  #remove metadata columns
-  dplyr::select(-(Name:pedlabsampnum))
+sites_list <- unique(snotel_sites$Site)
+data_list <- purrr::map(sites_list, ~fetch_snotel_data(x = .x))
+
+
+
+combined_sites<- bind_rows(data_list) 
+snow_depth <- left_join(snotel_sites, combined_sites, by= "Site")
+
+final_data_sf <- st_as_sf(snow_depth, crs = 4326)
+
+qtm(final_data_sf)
+
 
 
 ```
