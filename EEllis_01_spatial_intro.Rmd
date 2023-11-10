@@ -243,19 +243,19 @@ class(co_elevation)
 `terra` uses objects of a new class called `SpatRaster`. Converting a `RasterLayer` to a `SpatRaster` is quick using the `rast()` function.
 
 ```{r}
-co_elevation <- rast(co_elevation)
+co_elevation_rast <- rast(co_elevation)
 ```
 
 Now check the class:
 
 ```{r}
-class(co_elevation)
+class(co_elevation_rast)
 ```
 
 Now we can use `terra` functions, and re-run the `crop()` code we tried earlier:
 
 ```{r}
-co_elevation_crop <- crop(co_elevation, ext(poudre_hwy))
+co_elevation_crop <- crop(co_elevation_rast, ext(poudre_hwy))
 ```
 
 Plot all our spatial layers together:
@@ -265,6 +265,7 @@ qtm(co_elevation_crop) +
   qtm(poudre_hwy) +
   qtm(poudre_points_prj)
 ```
+
 
 ## 3. Reading and Writing Spatial Data
 
@@ -285,7 +286,7 @@ While you can give the file any name you want, note that you **must put '.shp' a
 To save raster data with `terra` use `writeRaster()`
 
 ```{r}
-writeRaster(co_elevation_crop, "data/poudre_elevation.tif")
+writeRaster(co_elevation_crop, "data/poudre_elevation.tif", overwrite = TRUE)
 ```
 
 Same as with the vector data, when saving raster data you **must add the '.tif' file extension** to the name. There are various formats raster data can be stored as (e.g., ASCII, ESRI Grid) but GeoTiffs are the most common and generally easiest to deal with in R.
@@ -352,32 +353,44 @@ rast("data/poudre_elevation.tif")
 
     **How would you extract the elevation at each of the three points in `poudre_points_prj` ? (2 pts)**
 
-    ```{r}
+```{r}
+?terra::extract
 
-    ```
+poudre_points_elev <- extract(co_elevation_crop, poudre_points_prj)
+```
 
 2.  **Choose your favorite state (other than Colorado). For that state, carry out the following tasks: (8 pts)**
 
 Import the county boundaries for your state:
 
 ```{r}
-
+ca_counties <- counties(state = "CA")
 ```
 
 Import elevation for your state (using your new counties object as the extent/bounding box and set `z = 7`):
 
 ```{r}
+ca_elevation <- get_elev_raster(ca_counties, z = 7)
 
+ca_elevation <- rast(ca_elevation)
 ```
 
 Create an interactive map of your state counties and the elevation layer underneath (*note:* use `?qtm` to see the argument options for `fill =` to draw only the county borders, i.e. remove the fill color).
 
 ```{r}
-
+qtm(ca_counties, fill = NULL) +
+  qtm(ca_elevation)
 ```
 
 Choose a single county within your state county object, and crop your elevation layer to the extent of that county (*note:* use `filter()` to create an object of just your selected county that you want to crop to). Follow the steps above we used to crop `co_elevation` to the poudre hwy.
 
 ```{r}
+LA_county <- ca_counties %>% filter(NAME == "Los Angeles")
 
+class(ca_elevation)
+
+ LA_crop <- crop(ca_elevation, LA_county, mask = TRUE)
+
+qtm(LA_county, fill = NULL) +
+  qtm(LA_crop)
 ```
