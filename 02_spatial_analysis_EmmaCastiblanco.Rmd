@@ -234,7 +234,7 @@ occ_rivers %>%
 
 #### Reflection
 
-This analysis is just for teaching purposes, why would you be cautious about these results for answering real research questions? Think about how we filtered everything to a political boundary, what's wrong with this method? --\> political boundaries are arbitrary or designed by people and not always useful ecological boundaries
+This analysis is just for teaching purposes, why would you be cautious about these results for answering real research questions? Think about how we filtered everything to a political boundary, what's wrong with this method? --\> political boundaries are arbitrary and designed by people and not always useful ecological boundaries
 
 ## Raster Reclassification
 
