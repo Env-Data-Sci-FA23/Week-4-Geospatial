@@ -14,9 +14,9 @@ Here are more resources on working with geospatial data in R: - [List of open-so
 
 There are 2 required lesson plans this week that will count towards your assignment. Remeber to first **Fork** this repository then **clone your forked repo**, and save copies of each .Rmd with *your name* appended to the file name. Below are descriptions of each assignment with links to the associated video tutorials:
 
-1.  **01_spatial_intro.Rmd**
+1.  **01_spatial_intro.Rmd** - Video: https://www.youtube.com/watch?v=iWrvtdGojDs
 
-2.  **02_spatial_analysis.Rmd**
+2.  **02_spatial_analysis.Rmd** - Video: https://www.youtube.com/watch?v=IREppWlPeYw
 
 <br>
 
@@ -29,5 +29,6 @@ As a reminder, it is okay to submit the pull request before you've finished all 
 There are a few lessons/challenges that are **not required** but may be worth your time (and extra credit..). Located in the 'bonus/' subfolder, you will find the following files:
 
 - **get_spatial_challenge.Rmd** : Worth up to 3 extra credit points if fully completed
+    - Video: https://www.youtube.com/watch?v=aGHMfDdLWjI
 
 - **spatial_viz.Rmd** : A fun lesson to explore more visualization techniques
