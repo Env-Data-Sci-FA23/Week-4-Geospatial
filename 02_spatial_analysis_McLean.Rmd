@@ -14,6 +14,14 @@ source("setup.R")
 ```
 
 
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(terra)
+```
+
+
 In the first lesson this week you were introduced to different spatial data types, various databases you can pull spatial data from and worked through importing, wrangling, and saving those spatial data types. Today we are going to dive deeper in spatial analyses in R.
 
 You have briefly used the `sf` and `terra` packages so far, but today we will be exploring them much more in depth using the wide range of spatial analysis operations they provide.
@@ -167,13 +175,15 @@ occ_larimer1 <- occ_larimer %>%
   mutate(river_dist = substr(river_dist_m, 1, 9))
 ```
 
-```{r}
-glimpse(occ_larimer2)
-```
+
 
 ```{r}
 occ_larimer2 <- occ_larimer1 %>% 
   mutate(river_dist = as.numeric(river_dist))
+```
+
+```{r}
+glimpse(occ_larimer2)
 ```
 
 <!-- Now to do it right for fun -->
@@ -334,7 +344,7 @@ First, we need to project our landcover raster to the CRS of our occurrences, ot
 # project the landcover layer
 landcover_prj <- project(landcover, crs(occ_prj))
 
-extract(landcover_prj, occ_prj)
+terra::extract(landcover_prj, occ_prj)
 ```
 
 Notice that this returns a 2 column data frame, with an ID for each feature (occurrence) and the extracted raster value in the second column. We can actually use `extract()` within `mutate()` to add the values as a new column to our occurrences data frame so we can do further summary statistics.
@@ -343,7 +353,7 @@ However, since `extract()` returns a 2 column data frame, it will nest this into
 
 ```{r}
 occ_landcover <- occ_prj %>%
-  mutate(common_landcover = extract(landcover_prj, occ_prj)) %>%
+  mutate(common_landcover = terra::extract(landcover_prj, occ_prj)) %>%
   unnest(common_landcover) %>% 
   #lets rename the land cover column which is now called "NLCD Land Cover Class"
   rename(common_landcover = "NLCD Land Cover Class")
@@ -364,7 +374,7 @@ We can also use `extract()` to extract raster values within polygons, but here m
 ```{r}
 county_landcover <- 
   counties %>%
-  mutate(landcover = extract(landcover_prj, counties, fun = "modal")) %>%
+  mutate(landcover = terra::extract(landcover_prj, counties, fun = "modal")) %>%
   unnest(landcover) %>%
   rename(value = "NLCD Land Cover Class") #renaming this helps us perform a join later on...
 ```
@@ -402,13 +412,13 @@ Find the average elevation each species occurs at (for all Colorado occurrences)
 # project the elevation layer
 elevation_prj <- project(elevation, crs(occ_prj))
 
-extract(elevation_prj, occ_prj)
+terra::extract(elevation_prj, occ_prj)
 ```
 
 
 ```{r}
 occ_elev <- occ_prj %>%
-  mutate(common_elevation = extract(elevation_prj, occ_prj)) %>%
+  mutate(common_elevation = terra::extract(elevation_prj, occ_prj)) %>%
   unnest(common_elevation)
 ```
 
