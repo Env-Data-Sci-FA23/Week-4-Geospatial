@@ -70,6 +70,7 @@ Quick view of all our points, colored by species:
 
 ```{r}
 qtm(occ_sp, symbols.col = "Species")
+
 ```
 
 Now, calculating the distance to the nearest river involves point to line distance calculations, which we can perform with the `sf` package.
@@ -248,7 +249,9 @@ occ_rivers %>%
 
 #### Reflection
 
-This analysis is just for teaching purposes, why would you be cautious about these results for answering real research questions? Think about how we filtered everything to a political boundary, what's wrong with this method? A: Political boundaries don't represent ecosystems very well, so a better method may be to use the EPA Ecorgeions boundaries/rasters instead of state/county boundaries/rasters.
+This analysis is just for teaching purposes, why would you be cautious about these results for answering real research questions? Think about how we filtered everything to a political boundary, what's wrong with this method? 
+
+A: Political boundaries don't represent ecosystems very well, so a better method may be to use the EPA Ecorgeions boundaries/rasters instead of state/county boundaries/rasters.
 
 ## Raster Reclassification
 
@@ -368,7 +371,7 @@ Value and NLCD.Land.Cover.Class are our cell value - class pairs. Now we want to
 Perform the appropriate `*_join` operation to tie our `county_landcover` and `classes` data frames together. Then make a map of the counties each colored/filled by the most common NLCD land cover class.
 
 ```{r}
-# join county_landcover and classes
+# join county_landcover & classes
 county_landcover <- left_join(county_landcover, classes, by = "value")
 
 # ggplt of counties filled by landcover (map)
@@ -377,8 +380,7 @@ ggplot() +
   labs(title = "Most Common Land Cover by County",
        fill = "Land Cover")
 
-# could also use qtm
-# qtm(county_landcover, fill = NLCD.Land.Cover.Class)
+# realizing that i could have used qtm instead of ggplot
 ```
 
 ### Exercise 6
@@ -389,7 +391,7 @@ Find the average elevation each species occurs at (for all Colorado occurrences)
 
 ```{r}
 # pull in elevation & occurence data
-# only works when I load in data from 01_spatial_intro
+# side note: only works when I load in data from 01_spatial_intro
 class(occ_prj)
 class(co_elevation)
 
@@ -407,17 +409,23 @@ st_crs(co_elevation) == st_crs(occ_prj_elevation)
 
 
 ```{r}
+# extraction
 co_occ_elevation <- project(co_elevation, crs(occ_prj_elevation))
 extract(co_elevation_prj, occ_prj_elevation)
 
+# mutate & unnest
 occ_elevation <- occ_prj_elevation %>%
   mutate(common_elevation = extract(co_elevation_prj, occ_prj_elevation)) %>%
   unnest(common_elevation)
 
+# avg
 average_elevation <- occ_elevation %>%
   st_drop_geometry() %>% 
   group_by(Species) %>% 
   summarise(avg_elevation = mean(Elevation, na.rm = TRUE))
+
+# was able to run this another time and get a table, but i'm running this again now to double check my answers and i'm getting an error... why is R like this :')
+
 ```
 On average, marmots are more frequently found at higher elevations.
 
