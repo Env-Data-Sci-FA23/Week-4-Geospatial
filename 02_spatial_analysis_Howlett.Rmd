@@ -362,7 +362,12 @@ qtm(elevation) +
 
 elevation_occ <- occ_prj %>% 
   mutate(elevation = extract(elevation, occ_prj)) %>% 
-  unnest(elevation) %>% 
+  unnest(elevation) 
+
+elevation_occ %>% 
+  st_drop_geometry() %>% 
   group_by(Species) %>% 
-  mutate( avg_elevation = mean(values(elevation)))
+  summarise( avg_elevation = mean(Elevation, na.rm = TRUE))
 ```
+
+The Yellow-bellied Marmot is on average, found at the highest elevations (3302 m)
