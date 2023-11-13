@@ -424,6 +424,7 @@ average_elevation <- occ_elevation %>%
   summarise(avg_elevation = mean(Elevation, na.rm = TRUE))
 
 # was able to run this another time and get a table, but i'm running this again now to double check my answers and i'm getting an error... why is R like this :')
+
 ```
 On average, marmots are more frequently found at higher elevations.
 
