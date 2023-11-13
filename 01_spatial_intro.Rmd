@@ -408,7 +408,6 @@ Create an interactive map of your state counties and the elevation layer underne
 
 qtm(ny_elevation)+
   qtm(ny_counties, fill=NULL)
-
 ```
 
 
@@ -430,6 +429,7 @@ elevation_kings_county <- crop(ny_elevation, kings_county, mask = TRUE)
 ```
 
 ```{r}
+# interactive map
 qtm(elevation_kings_county) + 
   qtm(kings_county, fill = NULL)
 ```

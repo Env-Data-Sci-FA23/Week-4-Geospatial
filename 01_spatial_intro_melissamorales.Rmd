@@ -421,7 +421,6 @@ kings_county<- ny_counties %>%
 
 ```{r}
 ny_elevation <- rast(ny_elevation)
-
 ```
 
 ```{r}

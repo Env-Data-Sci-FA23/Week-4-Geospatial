@@ -64,7 +64,7 @@ occ_sp <- bind_rows(occ) %>%
   st_as_sf(coords = c("decimalLongitude", "decimalLatitude"), crs = 4236)
 ```
 
-We set the CRS to `4236`, which is the EPSG code for WGS84, the most commonly used CRS for GPS coordinates (But I also checked the GBIF metadata to make sure it was in fact WGS84).
+We set the CRS to `4326`, which is the EPSG code for WGS84, the most commonly used CRS for GPS coordinates (But I also checked the GBIF metadata to make sure it was in fact WGS84).
 
 Quick view of all our points, colored by species:
 
@@ -85,6 +85,24 @@ st_crs(rivers) == st_crs(occ_sp)
 The CRS of our objects does not match. Using what you learned in week one, conduct a spatial transformation to our `occ_sp` object to coerce it to the same CRS of our `rivers` object. Call the new object `occ_prj` and double check that `rivers` and our new occurrences object are in the same CRS after transforming
 
 ```{r}
+# match CRS
+occ_prj <- st_transform(occ_sp, st_crs(rivers))
+
+# Check the CRS of the rivers object
+crs_rivers <- st_crs(rivers)
+
+# Check the CRS of the occurrences object (occ_prj)
+crs_occurrences <- st_crs(occ_prj)
+
+# Compare the CRS of the two objects
+identical_crs <- identical(crs_rivers, crs_occurrences)
+
+# Print the result
+if (identical_crs) {
+  cat("The CRS of rivers and occurrences objects are the same.\n")
+} else {
+  cat("The CRS of rivers and occurrences objects are different.\n")
+}
 
 ```
 
@@ -106,7 +124,11 @@ Use `?st_filter` to explore the use of the function, and then use it to filter o
 *Note:* You will first need to create a spatial object of just Larimer county to use as a filter.
 
 ```{r}
+# spatial obj
+larimer_county <- counties[counties$NAME == "Larimer", ]
 
+# st_filter
+occ_larimer <- st_filter(occ_prj, larimer_county)
 ```
 
 ```{r}
@@ -143,11 +165,33 @@ Cool, now you have the distance to the nearest river (in meters) for each indivi
 *Hint*: remember that the new distance column is a 'units' data type will throw an error when you try to plot those values. You will need to make use of `mutate()` and `as.numeric` within your string of operations in order to complete task.
 
 ```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+
+colnames(occ_larimer)
+
+# convert
+occ_larimer <- occ_larimer %>%
+  mutate(river_dist_m = as.numeric(river_dist_m))
+
+# calculate avg distance
+species_avg_distance <- occ_larimer %>%
+  group_by(Species) %>%
+  summarize(avg_distance = mean(river_dist_m))
+
+# plot
+ggplot(species_avg_distance, aes(x = Species, y = avg_distance)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Average Distance to Nearest River by Species",
+       x = "Species",
+       y = "Average Distance (meters)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
 ```
 
-Which species is, on average, found closest to a river?
+Which species is, on average, found closest to a river? The Wester Tiger Salamander, on average, is found closest to a river compared to Elk and Yellow-bellied marmots.
 
 ## Buffers
 
@@ -204,7 +248,7 @@ occ_rivers %>%
 
 #### Reflection
 
-This analysis is just for teaching purposes, why would you be cautious about these results for answering real research questions? Think about how we filtered everything to a political boundary, what's wrong with this method?
+This analysis is just for teaching purposes, why would you be cautious about these results for answering real research questions? Think about how we filtered everything to a political boundary, what's wrong with this method? A: Political boundaries don't represent ecosystems very well, so a better method may be to use the EPA Ecorgeions boundaries/rasters instead of state/county boundaries/rasters.
 
 ## Raster Reclassification
 
@@ -229,9 +273,16 @@ freq(landcover)
 Create a bar chart of landcover frequency, and order the bars highest to lowest (see [this resource](https://sebastiansauer.github.io/ordering-bars/) to guide you on sorting bars by a numeric variable/column). Also investigate the use of `coor_flip()` and how it might make your plot look better...
 
 ```{r}
+landcover_freq <- terra::freq(landcover)
 
+# convert to data frame
+landcover_df <- as.data.frame(landcover_freq)
+
+ggplot(landcover_freq, aes(x = reorder(value, count), y = -count))+ 
+  geom_bar(stat = "identity")+
+  labs(y = "Landcover Frequency",x = "Landcover Type")+
+  coord_flip()
 ```
-
 Say we want to explore some habitat characteristics of our species of interest, and we are specifically interested in forest cover. We can use raster reclassification to create a new layer of just forest types in Colorado.
 
 Since rasters are technically matrices, we can using **indexing** and change values quickly using matrix operations. Given this particular raster uses character names associated with values (thanks to the .aux file!), we can index by those names.
@@ -317,7 +368,17 @@ Value and NLCD.Land.Cover.Class are our cell value - class pairs. Now we want to
 Perform the appropriate `*_join` operation to tie our `county_landcover` and `classes` data frames together. Then make a map of the counties each colored/filled by the most common NLCD land cover class.
 
 ```{r}
+# join county_landcover and classes
+county_landcover <- left_join(county_landcover, classes, by = "value")
 
+# ggplt of counties filled by landcover (map)
+ggplot() + 
+  geom_sf(data = county_landcover, aes(fill = NLCD.Land.Cover.Class)) +
+  labs(title = "Most Common Land Cover by County",
+       fill = "Land Cover")
+
+# could also use qtm
+# qtm(county_landcover, fill = NLCD.Land.Cover.Class)
 ```
 
 ### Exercise 6
@@ -327,5 +388,39 @@ Find the average elevation each species occurs at (for all Colorado occurrences)
 *Hints*: Use the `elevation` and `occ_prj` objects we have created or read in above. Remember to check the CRS and perform a spatial transformation if necessary! All parts needed to answer this question have been introduced in this lesson plan.
 
 ```{r}
+# pull in elevation & occurence data
+# only works when I load in data from 01_spatial_intro
+class(occ_prj)
+class(co_elevation)
 
+# match
+st_crs(co_elevation) == st_crs(occ_prj)
 ```
+
+```{r}
+# transform the CRS of co_elevation
+occ_prj_elevation <- st_transform(occ_prj, st_crs(co_elevation))
+
+# match
+st_crs(co_elevation) == st_crs(occ_prj_elevation)
+```
+
+
+```{r}
+co_occ_elevation <- project(co_elevation, crs(occ_prj_elevation))
+extract(co_elevation_prj, occ_prj_elevation)
+
+occ_elevation <- occ_prj_elevation %>%
+  mutate(common_elevation = extract(co_elevation_prj, occ_prj_elevation)) %>%
+  unnest(common_elevation)
+
+average_elevation <- occ_elevation %>%
+  st_drop_geometry() %>% 
+  group_by(Species) %>% 
+  summarise(avg_elevation = mean(Elevation, na.rm = TRUE))
+```
+On average, marmots are more frequently found at higher elevations.
+
+yellow-bellied marmot: 3301
+elk - 2641
+western tiger salamander: 2330

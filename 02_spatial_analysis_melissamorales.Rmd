@@ -70,6 +70,7 @@ Quick view of all our points, colored by species:
 
 ```{r}
 qtm(occ_sp, symbols.col = "Species")
+
 ```
 
 Now, calculating the distance to the nearest river involves point to line distance calculations, which we can perform with the `sf` package.
