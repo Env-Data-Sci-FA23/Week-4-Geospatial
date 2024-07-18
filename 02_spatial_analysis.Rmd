@@ -8,6 +8,7 @@ output: github_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 ```
+## Assignment Details: This assignment is worth 10 points.
 
 In the first lesson this week you were introduced to different spatial data types, various databases you can pull spatial data from and worked through importing, wrangling, and saving those spatial data types. Today we are going to dive deeper in spatial analyses in R.
 
@@ -76,7 +77,7 @@ Now, calculating the distance to the nearest river involves point to line distan
 
 Before performing any spatial operations, remember all of our spatial objects must be in the same CRS.
 
-### Exercise #1
+### Exercise #1 (1 point)
 
 ```{r}
 st_crs(rivers) == st_crs(occ_sp)
@@ -99,7 +100,7 @@ Our occurrence data set covers all of Colorado, but rivers are only for Larimer 
 
 Similar to `filter()` from the {tidyverse}, we can use `st_filter()` to perform a *spatial* filtering (i.e., we want to filer just the points that occur in Larimer County).
 
-### Exercise #2
+### Exercise #2 (1 point)
 
 Use `?st_filter` to explore the use of the function, and then use it to filter our `occ_prj` points to Larimer county and call the new object `occ_larimer`.
 
@@ -136,7 +137,7 @@ Notice that the new column "river_dist_m" is more than just a numeric class, but
 str(occ_larimer)
 ```
 
-### Exercise #3
+###  #3 (2 points)
 
 Cool, now you have the distance to the nearest river (in meters) for each individual species occurrence, but you want the average distance for each species. Using what you know of the `dplyr` functions, calculate the species average distance, then make a bar plot to compare the averages among species:
 
@@ -224,7 +225,7 @@ We can quickly view the frequency of each land cover type with the `freq()` func
 freq(landcover)
 ```
 
-### Exercise 4
+###  4 (2 points)
 
 Create a bar chart of landcover frequency, and order the bars highest to lowest (see [this resource](https://sebastiansauer.github.io/ordering-bars/) to guide you on sorting bars by a numeric variable/column). Also investigate the use of `coor_flip()` and how it might make your plot look better...
 
@@ -312,7 +313,7 @@ classes <- as.data.frame(cats(landcover)) #coerce to a data frame because cats()
 
 Value and NLCD.Land.Cover.Class are our cell value - class pairs. Now we want to join this to our `county_landcover` object to get the actual land cover name.
 
-### Exercise 5
+###  5 (2 points)
 
 Perform the appropriate `*_join` operation to tie our `county_landcover` and `classes` data frames together. Then make a map of the counties each colored/filled by the most common NLCD land cover class.
 
@@ -320,7 +321,7 @@ Perform the appropriate `*_join` operation to tie our `county_landcover` and `cl
 
 ```
 
-### Exercise 6
+###  6 (2 points)
 
 Find the average elevation each species occurs at (for all Colorado occurrences). Which species is, on average, found at the highest elevations?
 
