@@ -9,6 +9,8 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, eval = FALSE)
 ```
 
+## Assignment Details: This assignment is worth 10 points. 
+
 ## 1. Spatial Data Formats
 
 **Vector Data**
