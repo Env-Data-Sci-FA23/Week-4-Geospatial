@@ -8,6 +8,7 @@ output: github_document
 ```{r setup, include= FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, eval = FALSE)
 ```
+## Assignment Details: This assignment is worth 10 points. 
 
 ## 1. Spatial Data Formats
 
