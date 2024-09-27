@@ -1,0 +1,157 @@
+---
+title: "Retrieve and Wrangle Spatial Data"
+author: "Caitlin Mothes"
+date: "`r Sys.Date()`"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+In this lesson you will be exposed to various R packages you can retrieve spatial data from and work through importing, wrangling, and saving various spatial data sets.
+
+```{r}
+source("setup.R")
+```
+
+Set up the `tmap` mode to interactive for some quick exploitative mapping of all these various spatial data sets.
+
+```{r}
+tmap_mode("view")
+```
+
+## Vector Data
+
+### US Census spatial data with `tigris`
+
+Import the counties shapefile for Colorado again as you did in lesson 1, along with linear water features for Larimer county.
+
+```{r}
+
+counties <- tigris::counties(state = "CO")
+
+linear_features <- linear_water(state = "CO", county = "Larimer")
+
+```
+
+This linear features file is pretty meaty. Inspect all the unique names for the features, what naming pattern do you notice? Let's filter this data set to only major rivers in the county, which all have 'Riv' at the end of their name. For working with character strings, the `stringr` package is extremely helpful and a member of the Tidyverse.
+
+To filter rows that have a specific character string, you can use `str_detect()` within `filter()`.
+
+```{r}
+rivers <- linear_features %>% 
+  filter(str_detect(FULLNAME, "Riv"))
+```
+
+### Species Occurrence data with [`rgbif`](https://docs.ropensci.org/rgbif/)
+
+To experiment with point data (latitude/longitude), we are going to explore the `rgbif` package, which allows you to download species occurrences from the [Global Biodiversity Information Facility (GBIF)](https://www.gbif.org/), a database of global species occurrences with over 2.2 billion records.
+
+We are going to import occurrence data for a couple of charismatic Colorado species: Elk, Yellow-Bellied Marmots, and Western Tiger Salamanders.
+
+To pull occurrence data with this package you use the `occ_data()` function from `rgbif` and give it a species scientific name you want to retrieve data for. Since we want to perform this operation for three species, this is a good opportunity to work through the iterative coding lessons you learned last week.
+
+We first need to create a string of species scientific names to use in the download function, and create a second string with their associated common names (order matters, make sure the two strings match).
+
+```{r}
+#make a string of species names to use in the 'occ_data' function
+species <- c("Cervus canadensis", "Marmota flaviventris", "Ambystoma mavortium")
+
+#also make a string of common names
+common_name <- c("Elk", "Yellow-bellied Marmot", "Western Tiger Salamander")
+```
+
+### Exercise #1 {style="color: red"}
+
+The code below shows you the steps we want to import data for a single species. I got it started for you so that it runs for one species, but your task is to convert this chunk of code to a for loop that iterates across each species scientific and common name.
+
+*Tip for getting started*: You will need to add a couple extra steps outside of the for loop, including first creating an empty list to hold each output of each iteration and after the for loop bind all elements of the list to a single data frame using `bind_rows()` .
+
+```{r}
+# workflow outline
+species <- species[1]
+common_name <- common_name[1]
+
+occ <-
+    occ_data(
+      scientificName = species,
+      hasCoordinate = TRUE, #we only want data with spatial coordinates
+      geometry = st_bbox(counties), #filter to the state of CO
+      limit = 2000 #optional set an upper limit for total occurrences to download
+    ) %>%
+    .$data #return just the data frame. The '.' symbolizes the previous function's output. 
+  
+  # add species name column as ID to use later
+  occ$ID <- common_name
+  
+  #clean by removing duplicate occurrences
+  occ <-
+    occ %>% distinct(decimalLatitude, decimalLongitude, .keep_all = TRUE) %>%
+    dplyr::select(Species = ID,
+                  decimalLatitude,
+                  decimalLongitude,
+                  year,
+                  month,
+                  basisOfRecord) 
+```
+
+Once you have your full data frame of occurrences for all three species, convert it to a spatial `sf` points object with the CRS set to 4326. Name the final object `occ`.
+
+```{r}
+
+```
+
+**Note**: we only used a few filter functions here available with the `occ_data()` function, but there are many more worth exploring!
+
+```{r}
+?occ_data
+```
+
+#### Challenge! {style="color:red"}
+
+Re-write the for loop to retrieve each species occurrences but using `purrr::map()` instead.
+
+```{r}
+
+```
+
+### SNOTEL data with [`soilDB`](http://ncss-tech.github.io/soilDB/)
+
+The `soilDB` package allows access to many databases, one of which includes daily climate data from USDA-NRCS SCAN (Soil Climate Analysis Network) stations. We are particularly interested in the SNOTEL (Snow Telemetry) sites to get daily snow depth across Colorado.
+
+First, you will need to read in the site metadata to get location information. The metadata file is included with the `soilDB` package installation, and you can bring it into your environment with `data()`
+
+```{r}
+data('SCAN_SNOTEL_metadata', package = 'soilDB')
+```
+
+### Exercise #2 {style="color: red"}
+
+Filter this metadata to only the 'SNOTEL' sites and 'Larimer' county, convert it to a spatial `sf` object (set the CRS to `4326`, WGS 84), and name it 'snotel_sites'.
+
+```{r}
+
+```
+
+How many SNOTEL sites are located in Colorado?
+
+### Exercise #3 {style="color: red"}
+
+Below is the string of operations you would use to import data for a single SNOTEL site for the years 2020 to 2022. Use `purrr::map()` to pull data for all unique SNOTEL sites in the `snotel_sites` object you just created. Coerce the data to a single data frame, then as a final step use `left_join()` to join the snow depth data to the station data to get the coordinates for all the sites, and make it a spatial object.
+
+```{r}
+#First Site ID
+Site <- unique(snotel_sites$Site)[1]
+
+
+data <- fetchSCAN(site.code = Site, 
+                  year = 2020:2022) %>%
+  # this returns a list for each variable, bind them to a single df
+  bind_rows() %>%
+  as_tibble() %>%
+  #filter just the snow depth site
+  filter(sensor.id == "SNWD.I") %>% 
+  #remove metadata columns
+  dplyr::select(-(Name:pedlabsampnum))
+```
