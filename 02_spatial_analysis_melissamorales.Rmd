@@ -8,7 +8,6 @@ output: github_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 ```
-## Assignment Details: This assignment is worth 10 points.
 
 In the first lesson this week you were introduced to different spatial data types, various databases you can pull spatial data from and worked through importing, wrangling, and saving those spatial data types. Today we are going to dive deeper in spatial analyses in R.
 
@@ -71,13 +70,14 @@ Quick view of all our points, colored by species:
 
 ```{r}
 qtm(occ_sp, symbols.col = "Species")
+
 ```
 
 Now, calculating the distance to the nearest river involves point to line distance calculations, which we can perform with the `sf` package.
 
 Before performing any spatial operations, remember all of our spatial objects must be in the same CRS.
 
-### Exercise #1 (1 point)
+### Exercise #1
 
 ```{r}
 st_crs(rivers) == st_crs(occ_sp)
@@ -118,7 +118,7 @@ Our occurrence data set covers all of Colorado, but rivers are only for Larimer 
 
 Similar to `filter()` from the {tidyverse}, we can use `st_filter()` to perform a *spatial* filtering (i.e., we want to filer just the points that occur in Larimer County).
 
-### Exercise #2 (1 point)
+### Exercise #2
 
 Use `?st_filter` to explore the use of the function, and then use it to filter our `occ_prj` points to Larimer county and call the new object `occ_larimer`.
 
@@ -159,7 +159,7 @@ Notice that the new column "river_dist_m" is more than just a numeric class, but
 str(occ_larimer)
 ```
 
-###  #3 (2 points)
+### Exercise #3
 
 Cool, now you have the distance to the nearest river (in meters) for each individual species occurrence, but you want the average distance for each species. Using what you know of the `dplyr` functions, calculate the species average distance, then make a bar plot to compare the averages among species:
 
@@ -249,7 +249,9 @@ occ_rivers %>%
 
 #### Reflection
 
-This analysis is just for teaching purposes, why would you be cautious about these results for answering real research questions? Think about how we filtered everything to a political boundary, what's wrong with this method? A: Political boundaries don't represent ecosystems very well, so a better method may be to use the EPA Ecorgeions boundaries/rasters instead of state/county boundaries/rasters.
+This analysis is just for teaching purposes, why would you be cautious about these results for answering real research questions? Think about how we filtered everything to a political boundary, what's wrong with this method? 
+
+A: Political boundaries don't represent ecosystems very well, so a better method may be to use the EPA Ecorgeions boundaries/rasters instead of state/county boundaries/rasters.
 
 ## Raster Reclassification
 
@@ -269,7 +271,7 @@ We can quickly view the frequency of each land cover type with the `freq()` func
 freq(landcover)
 ```
 
-###  4 (2 points)
+### Exercise 4
 
 Create a bar chart of landcover frequency, and order the bars highest to lowest (see [this resource](https://sebastiansauer.github.io/ordering-bars/) to guide you on sorting bars by a numeric variable/column). Also investigate the use of `coor_flip()` and how it might make your plot look better...
 
@@ -364,12 +366,12 @@ classes <- as.data.frame(cats(landcover)) #coerce to a data frame because cats()
 
 Value and NLCD.Land.Cover.Class are our cell value - class pairs. Now we want to join this to our `county_landcover` object to get the actual land cover name.
 
-###  5 (2 points)
+### Exercise 5
 
 Perform the appropriate `*_join` operation to tie our `county_landcover` and `classes` data frames together. Then make a map of the counties each colored/filled by the most common NLCD land cover class.
 
 ```{r}
-# join county_landcover and classes
+# join county_landcover & classes
 county_landcover <- left_join(county_landcover, classes, by = "value")
 
 # ggplt of counties filled by landcover (map)
@@ -378,11 +380,10 @@ ggplot() +
   labs(title = "Most Common Land Cover by County",
        fill = "Land Cover")
 
-# could also use qtm
-# qtm(county_landcover, fill = NLCD.Land.Cover.Class)
+# realizing that i could have used qtm instead of ggplot
 ```
 
-###  6 (2 points)
+### Exercise 6
 
 Find the average elevation each species occurs at (for all Colorado occurrences). Which species is, on average, found at the highest elevations?
 
@@ -390,7 +391,7 @@ Find the average elevation each species occurs at (for all Colorado occurrences)
 
 ```{r}
 # pull in elevation & occurence data
-# only works when I load in data from 01_spatial_intro
+# side note: only works when I load in data from 01_spatial_intro
 class(occ_prj)
 class(co_elevation)
 
@@ -408,17 +409,23 @@ st_crs(co_elevation) == st_crs(occ_prj_elevation)
 
 
 ```{r}
+# extraction
 co_occ_elevation <- project(co_elevation, crs(occ_prj_elevation))
 extract(co_elevation_prj, occ_prj_elevation)
 
+# mutate & unnest
 occ_elevation <- occ_prj_elevation %>%
   mutate(common_elevation = extract(co_elevation_prj, occ_prj_elevation)) %>%
   unnest(common_elevation)
 
+# avg
 average_elevation <- occ_elevation %>%
   st_drop_geometry() %>% 
   group_by(Species) %>% 
   summarise(avg_elevation = mean(Elevation, na.rm = TRUE))
+
+# was able to run this another time and get a table, but i'm running this again now to double check my answers and i'm getting an error... why is R like this :')
+
 ```
 On average, marmots are more frequently found at higher elevations.
 
